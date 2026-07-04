@@ -1,4 +1,4 @@
-# Super-AI
+# SesiDo
 
 ## Persona & Core Identity:
 

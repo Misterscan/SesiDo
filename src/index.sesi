@@ -211,6 +211,9 @@ fn sanitize(name) {
 }
 
 // Sesi Built-in Functions Reworked For SesiDo Agent Access
+
+fn makeDir(args){let path=null; if type(args)=="object"{path=args["path"]}else{path=args}if path==null{return "Error: makeDir requires a path."}try{Safe.makeDir(path); return "Success: Directory created: "+path}catch(e){return "Error creating directory:"+str(e)}}
+
 fn read(args) {
     let path = null
     if type(args) == "object" {
@@ -283,6 +286,8 @@ fn remove(args) {
         }
     }
 }
+
+fn move(args){let path=null; let dest=null; if type(args)=="object"{path=args["path"]; dest=args["destination"]}else if type(args)=="array"{path=args[0]; dest=args[1]}else{path=args}if path==null||dest==null{return "Error: move requires a source and destination."}let userInput=input("SesiDo Agent is trying to move "+path+" to "+dest+". Is this okay?: (y/n) "); if to_lower(trim(userInput))!="y"{return "Error: User rejected move request."}if to_lower(trim(userInput))=="y"{try{Safe.move(path, dest); return "Success: Moved "+path+" to "+dest}catch(e){return "Error moving file:"+str(e)}}}
 
 fn list(args) {
     let path = "."
@@ -1023,7 +1028,8 @@ export fn localTools() {
         define_tool(name, func, desc)
         tool_refs[name] = desc
     }
-
+    register_tool("makeDir", makeDir, "Creates a directory at the specified path. Args: {path: string}")
+    register_tool("move", move, "Moves a file or directory. Args: {path: string, dest: string}")
     register_tool("read", read, "Safely reads a file. Args: {path: string}")
     register_tool("write", write, "Safely writes a file. Args: {path: string, content: string}")
     register_tool("appendFile", appendFile, "Appends to a file. Args: {path: string, content: string}")
@@ -1085,6 +1091,8 @@ fn chat() {
     tool_map["write"] = write
     tool_map["appendFile"] = appendFile
     tool_map["remove"] = remove
+    tool_map["makeDir"] = makeDir
+    tool_map["move"] = move
     tool_map["list"] = list
     tool_map["safeRun"] = safeRun
     tool_map["eval"] = eval
