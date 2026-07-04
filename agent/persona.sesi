@@ -2,9 +2,8 @@
 // Import safe functions, docs, and helpers
 allow "../utils/safe" in with Safe; allow "./docs" in with Docs; allow "./helpers" in with Helpers
 // Load persona components
-let cwd = Safe.wsRoot + "/SesiDo/"; let sysPath = "database/.agent/SYSTEM_INSTRUCTION.md"; if sysPath == null{sysPath = cwd+"sesi_modules/SesiDo/database/.agent/SYSTEM_INSTRUCTION.md"} let toolsPath = "database/.agent/tools.md"; if toolsPath == null{toolsPath = cwd+"sesi_modules/SesiDo/database/.agent/tools.md"}
-try { Safe.makeDir(cwd + "database/.agent/") } catch(e) {}
-let systemInstruction = Safe.readFile(sysPath); let toolsMD = Safe.readFile(toolsPath); if systemInstruction != null { Safe.writeFile(cwd + sysPath, systemInstruction) }if toolsMD != null { Safe.writeFile(cwd + toolsPath, toolsMD) }
+let sysPath = "sesi_modules/SesiDo/database/.agent/SYSTEM_INSTRUCTION.md"; let toolsPath = "sesi_modules/SesiDo/database/.agent/tools.md"
+let systemInstruction = Safe.readFile(sysPath); let toolsMD = Safe.readFile(toolsPath); if systemInstruction == null { sysPath = "database/.agent/SYSTEM_INSTRUCTION.md"; systemInstruction = Safe.readFile(sysPath) }if toolsMD == null { toolsPath = "database/.agent/tools.md"; toolsMD = Safe.readFile(toolsPath) }
 let agentTools = Helpers.getHelperContent(); let agentBasicsMD = Docs.getBasicsContent(); let agentOptionalMD = Docs.getOptionalContent(); let agentOtherMD = Docs.getOtherContent()
 // Export persona components
 export fn getSystemInstruction() -> string {return systemInstruction}
