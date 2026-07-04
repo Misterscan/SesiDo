@@ -1,0 +1,2 @@
+// SesiDo Get Image Data Tool
+allow "../../main" in with SesiDo; set_alias("SesiDo-Flash", "gemini-3-flash-preview"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [GET IMAGE DATA]"; SesiDo.getImageInfo(args); print "[GET IMAGE DATA COMPLETED]"

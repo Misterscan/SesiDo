@@ -1,0 +1,12 @@
+// SesiDo Persona Retrieval
+// Import safe functions, docs, and helpers
+allow "../utils/safe" in with Safe; allow "./docs" in with Docs; allow "./helpers" in with Helpers
+// Load persona components
+let systemInstruction = Safe.readFile("database/.agent/SYSTEM_INSTRUCTION.md"); let toolsMD = Safe.readFile("database/.agent/tools.md"); let agentTools = Helpers.getHelperContent(); let agentBasicsMD = Docs.getBasicsContent(); let agentOptionalMD = Docs.getOptionalContent(); let agentOtherMD = Docs.getOtherContent()
+// Export persona components
+export fn getSystemInstruction() -> string {return systemInstruction}
+export fn getToolsMD() -> string {return toolsMD}
+export fn getAgentBasicsMD() -> string {return agentBasicsMD}
+export fn getAgentOptionalMD() -> string {return agentOptionalMD}
+export fn getAgentOtherMD() -> string {return agentOtherMD}
+export fn getAgentTools() -> string {return agentTools}

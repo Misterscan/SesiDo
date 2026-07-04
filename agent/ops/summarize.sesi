@@ -1,0 +1,2 @@
+// SesiDo Summarize Tool
+allow "../../main" in with SesiDo; set_alias("SesiDo-Lite", "gemini-3.1-flash-lite"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [SUMMARIZE]"; SesiDo.summarize(args); print "[SUMMARIZE ENDED]"

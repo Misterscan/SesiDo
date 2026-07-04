@@ -1,0 +1,22 @@
+{
+  "name": "SesiDo",
+  "version": "1.0.0",
+  "description": "SesiDo - Native Sesi Autonomous Agent",
+  "main": "index.sesi",
+  "scripts": {
+    "start": "sesi -l main.sesi",
+    "research": "sesi -l agent/ops/research.sesi",
+    "browser": "sesi -l agent/ops/browser.sesi",
+    "summarize": "sesi -l agent/ops/summarize.sesi",
+    "debug": "sesi -l agent/ops/debug.sesi",
+    "gen:code": "sesi -l agent/generate/coder.sesi",
+    "gen:image": "sesi -l agent/generate/image.sesi",
+    "gen:svg": "sesi -l agent/generate/svg.sesi",
+    "calculator": "sesi -l agent/math/calculator.sesi"
+  },
+  "keywords": [
+    "ai",
+    "sesi",
+    "intelligence"
+  ]
+}

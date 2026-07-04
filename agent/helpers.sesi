@@ -1,0 +1,4 @@
+// SesiDo Helper Retrieval
+allow "../utils/safe" in with Safe; let helpersDir = list_dir("helpers")
+// Get helper scripts
+export fn getHelperContent() -> string {let content = ""; for file in helpersDir {if contains(file, ".") {            content = content + "\n--- " + file + " ---\n" + Safe.readFile("helpers/" + file)}}return content}

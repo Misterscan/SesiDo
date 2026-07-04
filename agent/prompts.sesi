@@ -1,0 +1,85 @@
+/*
+    Specialized Prompts Module for SesiDo Agent
+    These are some examples of how to use the prompts module.
+
+    allow "agent/prompts" in with p
+    let planPrompt = p.architectPlan("goal", "context")
+    let reviewPrompt = p.codeReview("codeContent")
+    let bugPrompt = p.bugHunter("codeContent", "errorMsg")
+    let designPrompt = p.designPrompter("elementDesc")
+
+    let plan = model("SesiDo"){mediumThink}{planPrompt}
+    let review = model("SesiDo-Lite"){highThink}{reviewPrompt}
+    let bug = model("SesiDo-Pro"){lowTemp}{bugPrompt}
+    let design = model("SesiDo-Flash"){mediumThink, lowTemp}{designPrompt}
+
+    Feel free to experiment and add more prompts as needed below, but make sure to follow a similar style and format.
+*/
+
+// 1. Code Architect & Planner
+export fn architectPlan(goal: str, context: str) -> string {
+    prompt p {"You are a Principal Software Architect. Design a detailed, step-by-step implementation plan for the following goal.
+        
+        Goal: " goal "
+        Context/Existing Code: " context "
+        
+        Your response must include:
+        1. Architecture Overview (high-level approach and design patterns to use)
+        2. Step-by-Step Task Breakdown (sequenced logically to avoid breaking changes)
+        3. Potential Edge Cases & Security Risks to mitigate
+        4. Validation Plan (how to verify each step)
+        
+        Keep your reasoning extremely structured, clear, and professional."}
+    return p
+}
+
+// 2. Deep Code Reviewer
+export fn codeReview(codeContent: str) -> string {
+    prompt p {"Act as a Senior Code Reviewer. Audit the following code for quality, performance, safety, and maintainability.
+        
+        Code to Review:
+        " codeContent "
+        
+        Analyze the code along these dimensions:
+        - Security: Identify potential vulnerabilities, injection risks, or permission issues.
+        - Performance: Note any bottlenecks, redundant operations, or resource leaks.
+        - Readability & Idiomatic style: Suggest cleaner naming, formatting, or simpler constructs.
+        - Robustness: Find missing edge cases, poor error handling, or logical flaws.
+        
+        Provide actionable feedback with line-by-line recommendations where appropriate."}
+    return p
+}
+
+// 3. Debugger & Bug Hunter
+export fn bugHunter(codeContent: str, errorMsg: str) -> string {
+    prompt p {"You are an expert systems debugger. Analyze the code and the accompanying error message to locate the root cause and provide a fix.
+        
+        Error Message / Observed Bug:
+        " errorMsg "
+        
+        Source Code:
+        " codeContent "
+        
+        Explain:
+        1. The exact root cause of the failure.
+        2. Any secondary effects or related issues in this code block.
+        3. A step-by-step resolution plan.
+        4. The corrected code snippet."}
+    return p
+}
+
+// 4. UI/UX layout prompter
+export fn designPrompter(elementDesc: str) -> string {
+    prompt p {"Translate the layout request into a precise structural and semantic definition.
+        
+        Request: " elementDesc "
+        
+        Structure your definition to include:
+        1. Aspect ratio, dimensions, and grid alignment constraints.
+        2. CSS custom property definitions for variables (colors, margins, padding).
+        3. Precise layout mechanics (Flexbox, Grid, or positioning coordinates).
+        4. SVG drawing geometry, shape hierarchies, or layout boxes.
+        
+        Ensure definitions are mathematically consistent, responsive, and strictly valid."}
+    return p
+}

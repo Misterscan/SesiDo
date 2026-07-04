@@ -1,0 +1,9 @@
+// SesiDo Doc Retrieval
+// Import safe functions and define directories
+allow "../utils/safe" in with Safe; let basicsDir = list_dir("docs/getting-started"); let optionalDir = list_dir("docs/getting-started/optional"); let otherDir = list_dir("docs")
+// Get getting-started content
+export fn getBasicsContent() -> string {let content = ""; for file in basicsDir {if contains(file, ".") {            content = content + "\n--- " + file + " ---\n" + Safe.readFile("docs/getting-started/" + file)}}return content}
+// Get getting-started-optional content
+export fn getOptionalContent() -> string {let content = ""; for file in optionalDir {if contains(file, ".") {            content = content + "\n--- " + file + " ---\n" + Safe.readFile("docs/getting-started/optional/" + file)}}return content}
+// Get WRITING_SCRIPTS and SPECIFICATION content
+export fn getOtherContent() -> string {let content = ""; for file in otherDir {if contains(file, ".") && !contains(file, "SPECIFICATION") && !contains(file, "WRITING_SCRIPTS") {            content = content + "\n--- " + file + " ---\n" + Safe.readFile("docs/" + file)}}return content}

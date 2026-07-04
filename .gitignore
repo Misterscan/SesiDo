@@ -1,0 +1,9 @@
+.DS_Store
+.env
+.sesi_cache.json
+logs
+.artifacts
+*.db
+database/.agent/*.json
+.trash
+temp.sesi
