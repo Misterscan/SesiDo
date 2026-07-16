@@ -1,2 +1,2 @@
 // SesiDo Coder Tool
-allow "../../main" in with SesiDo; set_alias("SesiDo-Pro", "gemini-3.1-pro-preview"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [CODER]"; SesiDo.writeCode(args); print "[CODER FINISHED]"
+allow "../../index" in with SesiDo; set_alias("SesiDo-Pro", "gemini-3.1-pro-preview"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [CODER]"; SesiDo.writeCode(args); print "[CODER FINISHED]"

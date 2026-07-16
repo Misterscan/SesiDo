@@ -7,3 +7,6 @@ logs
 database/.agent/*.json
 .trash
 temp.sesi
+index.html
+SesiDo/database/.agent/default-brain-summary.json
+helpers/version-bump.sesi

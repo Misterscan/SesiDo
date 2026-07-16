@@ -1,2 +1,2 @@
 // SesiDo SVG Generation Tool
-allow "../../main" in with SesiDo; set_alias("SesiDo-Pro", "gemini-3.1-pro-preview"); set_alias("SesiDo-Lite", "gemini-3.1-flash-lite"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [SVG] "; SesiDo.createSVG(args); print "[SVG CREATED]"
+allow "../../index" in with SesiDo; set_alias("SesiDo-Pro", "gemini-3.1-pro-preview"); set_alias("SesiDo-Lite", "gemini-3.1-flash-lite"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [SVG] "; SesiDo.createSVG(args); print "[SVG CREATED]"
