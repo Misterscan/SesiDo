@@ -103,9 +103,9 @@ export fn settings(){
 
    Current alias: " defaultModel "
    Using model: " defaultOgName "
-   " effortLevel "
+   temperature: " effortLevel "
    " search " is active
-   " reasoningLevel "
+   thinkingLevel: " reasoningLevel "
    ============================
    "}
    print log
