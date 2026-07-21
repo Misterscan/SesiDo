@@ -128,7 +128,7 @@ The output of Custom.settings() should look like:
 ```bash
 ====== CURRENT SETTINGS ======
 
-Current Time: 7/4/2026
+Current Time: 7/21/2026
 - Filenames saved with a timestamp will look like: test-20260704161145.txt
 Available aliases:
  ["SesiDo", "SesiDo-Heavy", "SesiDo-Pro", "SesiDo-Lite", "SesiDo-Lite-Power", "SesiDo-Flash", "SesiDo-Image", "SesiDo-Image-Lite"]
