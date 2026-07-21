@@ -13,6 +13,7 @@
 - **Sesi-Native Orchestration**: Built on the Sesi language for minimal boilerplate and high-performance AI integration.
 - **Modular Helper Suite**: A robust collection of utilities in `helpers/` for file operations, git automation, and SVG generation.
 - **Reasoning-First**: Native primitives for model calls, structured output, and memory management.
+- **Asset Generation**: Built-in workflows for generated code, images, SVGs, and rendered pixel art.
 - **Extensible**: Easily add custom tools and workflows to your agent's cognitive stack.
 
 ## Installation
@@ -25,14 +26,14 @@
    ```
    or install directly from GitHub:
    ```bash
-   sesi -e 'make_dir("SesiDo")'
-   cd SesiDo
+   sesi -e 'make_dir("SesiDo-Agent")'
+   cd SesiDo-Agent
    sesi install github:Misterscan/SesiDo
    ```
 
 ## Local Usage
 
-The framework is designed for rapid execution. The entry point is `index.sesi`.
+The interactive chat application starts from `main.sesi` (which imports the module in `index.sesi`).
 
 - **Run the core agent**:
   ```bash
@@ -40,16 +41,18 @@ The framework is designed for rapid execution. The entry point is `index.sesi`.
   ```
   _OR_
   ```bash
-  sesi -l index.sesi
+  sesi -l main.sesi
   ```
-- **Core Logic**: The primary cognitive loop is defined in `main.sesi`.
+- **Core Logic**: The primary cognitive loop is defined in `index.sesi`.
 - **Helper Utilities**: Utilize the `helpers/` directory for common tasks:
   - `agent_file_ops.sesi`: Advanced file mutation (replace, insert, append).
   - `commit-message.sesi`: AI-powered git commit generation.
   - `text-search.sesi`: Sesi-native grep utility.
   - `line-swap.sesi`: Swap content in a file.
+  - `line-count.sesi`: Get the total line count for a file.
   - `svg-badge.sesi`: Creates README.md SVG badges.
   - `readme-banner.sesi`: Generate professional README.md SVG banners.
+  - `timestamp.sesi`: Get readable timestamps ready for scripts and filenames.
 
 ## Sesi Import Usage
 
@@ -63,10 +66,9 @@ SesiDo.main()
    Note: You can also import specific functions from SesiDo.
    Visit index.sesi for more exports.
 
-   SesiDo.writeCode()
-   SesiDo.research()
-   SesiDo.generateImage()
-   SesiDo.browsepage()
+   let avatar = SesiDo.drawPixelArt("SesiDo avatar, neon themed")
+   let research = SesiDo.research("Common coding language patterns")
+   let image = SesiDo.generateImage("product icon, colorful background")
 */
 ```
 
@@ -78,11 +80,13 @@ allow "SesiDo" in with Config
 
 export let modelNames = Config.sesiDoModels
 export let ogNames = Config.ogNames
-export let defaultModel = Config.sesiDoModels[1]
-export let defaultOgName = Config.ogNames[1]
+export let defaultModel = Config.sesiDoModels[0]
+export let defaultOgName = Config.ogNames[0]
 export let effortLevel = Config.mediumTemp
 export let reasoningLevel = Config.lowThink
 export let search = Config.searchGoogle
+export let currentTime = Config.localTime
+export let fileTimestamp = Config.formattedTime
 
 export fn settings(){
 
@@ -127,25 +131,82 @@ The output of Custom.settings() should look like:
 Current Time: 7/4/2026
 - Filenames saved with a timestamp will look like: test-20260704161145.txt
 Available aliases:
- ["SesiDo", "SesiDo-Pro", "SesiDo-Lite", "SesiDo-Flash", "SesiDo-Image"]
+ ["SesiDo", "SesiDo-Heavy", "SesiDo-Pro", "SesiDo-Lite", "SesiDo-Lite-Power", "SesiDo-Flash", "SesiDo-Image", "SesiDo-Image-Lite"]
 Available models:
- ["gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-image"]
+ ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image"]
 
-Current alias: SesiDo-Pro
-Using model: gemini-3.1-pro-preview
+Current alias: SesiDo
+Using model: gemini-3.6-flash
 temperature: 0.5
 search is active
 thinkingLevel: "low"
 ============================
 ```
 
+Importing SesiDo initializes its artifact directories and model aliases. Generated files are written under `.artifacts/` in the consuming workspace.
+
 Now you're ready to use SesiDo!
+
+## Exported Workflows
+
+| Function | Arguments | Result |
+| --- | --- | --- |
+| `writeCode` | `{"query": "..."}` | Generates a code response. |
+| `research` | `{"query": "..."}` | Researches a topic and saves a report. |
+| `summarize` | `{"text": "..."}` or `{"path": "..."}` | Summarizes text or a local file. |
+| `calculator` | `{"expression": "..."}` | Calculates an expression. |
+| `createSVG` | `{"description": "..."}` | Generates and renders SVG artwork. |
+| `drawPixelArt` | `{"description": "..."}` | Generates and renders pixel art. |
+| `generateImage` | `{"query": "..."}` | Generates an image. |
+| `getImageInfo` | `{"path": "..."}` | Analyzes an image. |
+| `browsePage` | `{"url": "...", "operation": "fetch"}` | Fetches, extracts, researches, analyzes, or screenshots a page. |
+
+`main()` is also exported for projects that intentionally want to launch the interactive chat loop.
+
+## Optional CLI Workflows
+
+The repository includes standalone wrappers for manually running the same workflows. Each command accepts a prompt after the script name and saves outputs under `.artifacts/`.
+
+| Command | Purpose |
+| --- | --- |
+| `npm run gen:code "prompt"` | Generate a code response. |
+| `npm run gen:image "prompt"` | Generate an image. |
+| `npm run gen:pixel "prompt"` | Generate and render pixel art to `.artifacts/images/`. |
+| `npm run gen:svg "prompt"` | Generate and render an SVG. |
+| `npm run research "topic"` | Run the research workflow. |
+| `npm run summarize "text or path"` | Run the summarization workflow. |
+| `npm run browser "url"` | Run the browser workflow. |
+| `npm run debug "path"` | Run the debugging workflow. |
+| `npm run calculator "expression"` | Run the calculator workflow. |
+
+For example:
+
+```bash
+npm run gen:pixel "SesiDo avatar, neon themed"
+```
+
+## Model Aliases
+
+The module registers these aliases from `index.sesi` when it is imported.
+
+| Alias | Configured model |
+| --- | --- |
+| `SesiDo` | `gemini-3.6-flash` |
+| `SesiDo-Heavy` | `gemini-3.5-flash` |
+| `SesiDo-Pro` | `gemini-3.1-pro-preview` |
+| `SesiDo-Lite` | `gemini-3.1-flash-lite` |
+| `SesiDo-Lite-Power` | `gemini-3.5-flash-lite` |
+| `SesiDo-Flash` | `gemini-3-flash-preview` |
+| `SesiDo-Image` | `gemini-3.1-flash-image` |
+| `SesiDo-Image-Lite` | `gemini-3.1-flash-lite-image` |
+
+Override an alias from a consuming script with `SesiDo.setModel(alias, modelName)`.
 
 ## Project Structure
 
-- `main.sesi`: Entry point.
-- `src/index.sesi`: Core agent logic and reasoning loops.
-- `index.sesi`: Minified src/index.sesi for quicker loading and compact repo.
+- `index.sesi`: Importable SesiDo module and exported workflows.
+- `main.sesi`: Optional interactive chat wrapper.
+- `src/index.sesi`: Readable source for the core module.
 - `helpers/`: Reusable utility scripts.
 - `docs/`: Detailed documentation and specifications.
 - `agent/`: Agent configurations.

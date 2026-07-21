@@ -55,7 +55,7 @@ let agentOtherMD = Persona.getAgentOtherMD()
 let agentTools = Persona.getAgentTools()
 
 export let sesiDoModels = ["SesiDo", "SesiDo-Heavy", "SesiDo-Pro", "SesiDo-Lite", "SesiDo-Lite-Power", "SesiDo-Flash", "SesiDo-Image", "SesiDo-Image-Lite"]
-export let ogNames = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image"]
+export let ogNames = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image"]
 
 export fn setModel(alias: str, model_name: str) {
     if alias != null {
