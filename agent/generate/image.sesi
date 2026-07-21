@@ -1,2 +1,2 @@
 // SesiDo Image Generation Tool
-allow "../../index" in with SesiDo; set_alias("SesiDo-Lite", "gemini-3.1-flash-lite"); set_alias("SesiDo-Image", "gemini-3.1-flash-image"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [IMAGE] "; SesiDo.generateImage(args); print "[IMAGE FINISHED]"
+allow "../../index" in with SesiDo; set_alias("SesiDo-Lite", "gemini-3.1-flash-lite"); set_alias("SesiDo-Image-Lite", "gemini-3.1-flash-lite-image"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [IMAGE] "; SesiDo.generateImage(args); print "[IMAGE FINISHED]"

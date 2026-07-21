@@ -1,4 +1,4 @@
-# Sesi Language Specification (v1.5)
+# Sesi Language Specification
 
 ## 1. Philosophy & Design Principles
 
@@ -27,7 +27,7 @@ Sesi is built on these core principles:
 - Quickly orchestrating shell commands
 - Rapid prototyping and scripting
 
-## 3. V1.5 Feature Set (Current)
+## 3. Feature Set
 
 ### Core Language Features
 
@@ -262,8 +262,8 @@ config_entry := (STRING | identifier) ':' expression
 Example:
 
 ```sesi
-let result = model("gemini-3.5-flash") {images: "scan.png", thinkingLevel: "low"} {"Transcribe all visible text."}
-let output = model("gemini-3.5-flash") {thinkingLevel: "medium"} {prompt}
+let result = model("gemini-3.6-flash") {images: "scan.png", thinkingLevel: "low"} {"Transcribe all visible text."}
+let output = model("gemini-3.6-flash") {thinkingLevel: "medium"} {prompt}
 ```
 
 #### Convert Expression
@@ -316,7 +316,7 @@ schema := '{' (identifier ':' type (',' identifier ':' type)*)? '}'
 Example:
 
 ```sesi
-let rawJson = "{\"projectName\": \"Sesi\", \"version\": \"1.6.1\", \"status\": \"active\"}"
+let rawJson = "{\"projectName\": \"Sesi\", \"version\": \"1.6.7\", \"status\": \"active\"}"
 let parsedRegistry = structured_output({projectName: string, version: string, status: string})(rawJson)
 ```
 
@@ -413,7 +413,7 @@ optional_type := type '?'
 - `read_file()`, `write_file()`, and `list_dir()` throw on filesystem failure
 - `structured_output()` currently logs parsing failures and returns `{}` if recovery fails
 
-## 8. Built-in Functions (V1.x)
+## 8. Built-in Functions
 
 ```
 print(any)                    // Output to stdout
@@ -449,6 +449,9 @@ list_dir(string) -> array<string> // List directory contents
 make_dir(string) -> bool          // Create directory (recursive)
 spawn(string) -> number           // Concurrent process creation
 exec(string) -> string            // Synchronous shell execution
+sesi(string, bool?, bool?) -> string // Synchronous in-process Sesi execution or compile check
+python(string, args) -> string    // Inline Python code execution
+js(strings, args) -> string       // In-proccess Javascript execution
 time() -> number                  // Current Unix timestamp
 random() -> number                // Random float (0.0 to 1.0)
 convert() -> bool                 // Convert between formats
@@ -580,7 +583,7 @@ Model calls can take optional configuration parameters (written on a single line
 
 ```sesi
 // Model call with native thinking effort level
-let response = model("gemini-3.5-flash") {thinkingLevel: "low"} {"Say hello"}
+let response = model("gemini-3.6-flash") {thinkingLevel: "low"} {"Say hello"}
 print response  // Returns string
 
 let logo = image("gemini-3.1-flash-image") {ratio: "1:1", size: "512"} {"A vector logo"}
@@ -601,7 +604,7 @@ print "Image written to logo.png"
 ### Reasoning with Structured Output
 
 ```sesi
-let result = structured_output({title: string, category: string, confidence: number})(model("gemini-3.1-flash-lite") {"Extract metadata from this text:" text})
+let result = structured_output({title: string, category: string, confidence: number})(model("gemini-3.5-flash-lite") {"Extract metadata from this text:" text})
 print result["title"]       // Access fields
 print result["confidence"]  // Type-safe access
 ```
@@ -610,7 +613,7 @@ print result["confidence"]  // Type-safe access
 
 ```sesi
 fn calculateTax(amount: number, rate: number) {print amount * rate}
-let taxAmount = tool_call(calculateTax)(model("gemini-3.1-flash-lite") {"Calculate 8% tax on $100"})
+let taxAmount = tool_call(calculateTax)(model("gemini-3.5-flash-lite") {"Calculate 8% tax on $100"})
 taxAmount
 ```
 
@@ -636,7 +639,7 @@ print x + y  // Output: 30
 ### Example 2: Function with Reasoning
 
 ```sesi
-fn analyzeText(text: string) -> string {return model("gemini-3.5-flash") {thinkingLevel: "low"} {"Analyze this text and return key insights:" text}}
+fn analyzeText(text: string) -> string {return model("gemini-3.6-flash") {thinkingLevel: "low"} {"Analyze this text and return key insights:" text}}
 print analyzeText("Reasoning is transforming industries")
 ```
 

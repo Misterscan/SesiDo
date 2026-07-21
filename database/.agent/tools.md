@@ -112,6 +112,12 @@ These tools form the bedrock of your environmental awareness and manipulation.
 - **Signature**: `fn generateImage(prompt: string) -> string`
 - **Schema**: `{"prompt": "string"}`
 
+### `drawPixelArt`
+
+- **Description**: Generate a pixel-art visual or avatar directly from a self-contained visual description. Do not inspect the workspace before calling it unless the user asks to use a specific local asset.
+- **Signature**: `fn drawPixelArt(args: object) -> string`
+- **Schema**: `{"description": "string"}`
+
 ---
 
 ## 📜 Architectural Guidelines for Custom Tools

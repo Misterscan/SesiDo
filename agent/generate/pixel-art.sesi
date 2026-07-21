@@ -1,0 +1,2 @@
+// SesiDo Pixel Art Generation Tool
+allow "../../index" in with SesiDo; set_alias("SesiDo-Lite-Power", "gemini-3.5-flash-lite"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [PIXEL ART] "; SesiDo.drawPixelArt(args); print "[PIXEL ART FINISHED]"

@@ -1,3 +1,3 @@
 // Entry point of the program
-allow "./index" in with {main}; set_alias("SesiDo", "gemini-3.5-flash"); set_alias("SesiDo-Pro", "gemini-3.1-pro-preview"); set_alias("SesiDo-Lite", "gemini-3.1-flash-lite"); set_alias("SesiDo-Flash", "gemini-3-flash-preview"); set_alias("SesiDo-Image", "gemini-3.1-flash-image");
+allow "./index" in with {main}; set_alias("SesiDo", "gemini-3.6-flash"); set_alias("SesiDo-Heavy", "gemini-3.5-flash"); set_alias("SesiDo-Pro", "gemini-3.1-pro-preview"); set_alias("SesiDo-Lite", "gemini-3.1-flash-lite"); set_alias("SesiDo-Lite-Power", "gemini-3.5-flash-lite"); set_alias("SesiDo-Flash", "gemini-3-flash-preview"); set_alias("SesiDo-Image", "gemini-3.1-flash-image"); set_alias("SesiDo-Image-Lite", "gemini-3.1-flash-lite-image");
 main()

@@ -1,4 +1,4 @@
 // SesiDo Helper Retrieval
-allow "../utils/safe" in with Safe; let helpersDir = list_dir("helpers")
+allow "../utils/safe" in with Safe; let helpersDir = list_dir("helpers"); if helpersDir = null {helpersDir = list_dir("sesi_modules/SesiDo/helpers")}
 // Get helper scripts
-export fn getHelperContent() -> string {let content = ""; for file in helpersDir {if contains(file, ".") {            content = content + "\n--- " + file + " ---\n" + Safe.readFile("helpers/" + file)}}return content}
+export fn getHelperContent() -> string {let content = ""; for file in helpersDir {if contains(file, ".") {            content = content + "\n--- " + file + " ---\n" + Safe.readFile("helpers/" + file); if content == "" { content = content + "\n--- " + file + " ---\n" + Safe.readFile("sesi_modules/SesiDo/helpers/" + file) }}}return content}

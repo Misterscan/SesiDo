@@ -12,10 +12,10 @@ allow "./helpers/timestamp" in with {
 }
 
 // Variables
-let workspaceRoot = trim(exec("pwd"))
-let dbDir = "database/"
-let artifactsDir = ".artifacts/"
-let logsDir = "logs/"
+let workspaceRoot = Safe.wsRoot + "/SesiDo/"
+let dbDir = workspaceRoot + "database/"
+let artifactsDir = workspaceRoot + ".artifacts/"
+let logsDir = workspaceRoot + "logs/"
 let codeDir = artifactsDir + "code/"
 let imageDir = artifactsDir + "images/"
 let svgDir = artifactsDir + "svgs/"
@@ -54,8 +54,8 @@ let agentOptionalMD = Persona.getAgentOptionalMD()
 let agentOtherMD = Persona.getAgentOtherMD()
 let agentTools = Persona.getAgentTools()
 
-export let sesiDoModels = ["SesiDo", "SesiDo-Pro", "SesiDo-Lite", "SesiDo-Flash", "SesiDo-Image"]
-export let ogNames = ["gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-image"]
+export let sesiDoModels = ["SesiDo", "SesiDo-Heavy", "SesiDo-Pro", "SesiDo-Lite", "SesiDo-Lite-Power", "SesiDo-Flash", "SesiDo-Image", "SesiDo-Image-Lite"]
+export let ogNames = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image"]
 
 export fn setModel(alias: str, model_name: str) {
     if alias != null {
@@ -66,28 +66,31 @@ export fn setModel(alias: str, model_name: str) {
         set_alias(sesiDoModels[2], ogNames[2])
         set_alias(sesiDoModels[3], ogNames[3])
         set_alias(sesiDoModels[4], ogNames[4])
+        set_alias(sesiDoModels[5], ogNames[5])
+        set_alias(sesiDoModels[6], ogNames[6])
+        set_alias(sesiDoModels[7], ogNames[7])
     }
 }
 
 // Temperature and thinking level settings
-export let minimalTemp = "temperature: 0.1"
-export let lowTemp = "temperature: 0.3"
-export let mediumTemp = "temperature: 0.5"
-export let highTemp = "temperature: 0.7"
-export let minimalThink = "thinkingLevel: 'minimal'"
-export let lowThink = "thinkingLevel: \"low\""
-export let mediumThink = "thinkingLevel: \"medium\""
-export let highThink = "thinkingLevel: \"high\""
-export let streamOutput = "stream: true"
-export let searchGoogle = "search"
-export let square = "ratio: \"1:1\""
-export let portrait = "ratio: \"9:16\""
-export let landscape = "ratio: \"16:9\""
-export let tv = "ratio: \"4:3\""
-export let mini = "size:\"512\""
-export let small = "size:\"1K\""
-export let medium = "size:\"2K\""
-export let large = "size:\"4K\""
+export let minimalTemp = 0.1
+export let lowTemp = 0.3
+export let mediumTemp = 0.5
+export let highTemp = 0.7
+export let minimalThink = "minimal"
+export let lowThink = "low"
+export let mediumThink = "medium"
+export let highThink = "high"
+export let streamOutput = true
+export let searchGoogle = true
+export let square = "1:1"
+export let portrait = "9:16"
+export let landscape = "16:9"
+export let tv = "4:3"
+export let mini = "512"
+export let small = "1K"
+export let medium = "2K"
+export let large = "4K"
 
 // Base brain from persona
 fn get_base_brain() {
@@ -336,13 +339,13 @@ fn safeRun(args) {
         return "Error: User rejected run request."
     }
     if to_lower(trim(userInput)) == "y" {
-        let fullCmd = cmd
-        if contains(cmd, ".sesi") && !contains(cmd, "sesi ") {
-            fullCmd = "sesi -l " + cmd
-        }
-    
         try {
-            let output = exec(fullCmd)
+            let output = cmd
+            if contains(cmd, ".sesi") && !contains(cmd, "sesi ") {
+                output = sesi(cmd, true)
+            } else {
+                output = exec(cmd)
+            }
             return output
         } catch (e) {
             return "Execution error:" + str(e)
@@ -638,9 +641,9 @@ Request to draw: " preCode}
     let filename = codeDir + sanitize(query) + "-" + formattedTime + "-svg.sesi"
     Safe.writeFile(filename, svgResponse)
     if svgResponse != "" {
-        let cmd = "sesi -l " + quote(filename)
+        let cmd = filename
         try {
-            exec(cmd)
+            sesi(cmd, true)
             print "[SesiDo]: Created and rendered SVG for" query "and saved to" svgDir "!"
         } catch (e) {
             print "[SesiDo]: ⚠ Error rendering SVG:" str(e)
@@ -648,6 +651,30 @@ Request to draw: " preCode}
     }
     print "[SesiDo]: Saved SVG sesi code for" query " to" codeDir "!"
     return svgResponse
+}
+
+export fn drawPixelArt(args){
+    let query=null;
+    if type(args)=="object"{
+        if args["query"]!=null{query=args["query"]
+        }else if args["description"]!=null{query=args["description"]}
+    }else{query=args}
+    if query==null||query==""{return "Error: drawPixelArt requires a description."}
+    print "[SesiDo]: Creating pixel art for:" query;
+    let png_output_path=imageDir+sanitize(query)+"-"+formattedTime+"-pixel-art.png";
+    let pixelArtResponse=false;
+    pixelArtResponse=model("SesiDo-Lite-Power"){brain}{"You are a Sesi programming language code generator.\nWrite a Sesi script using the 'std/draw' module to draw pixel art based on the following description. Use a grid of squares to represent pixels, and choose colors that match the description. The Sesi drawing API is:\n\n allow \"std/draw\" in with Draw\nDraw.clear()\n- Draw.pixel(x, y, color)\n- Draw.pixel_grid(grid, palatte, scale = 1, x = 0, y = 0)\n- Draw.save_png(path, width, height, background = \"transparent\")\n -- \nsave output.\nRules:\n1. Always allow \"std/draw\" in with Draw at the beginning.\n2. Sesi does not use let or var or function definitions inside the drawing statements. Just call Draw functions.\n3. Make sure to call Draw.save_png() at the end.\n4. Output ONLY the Sesi script code inside a ```sesi code block. Do not write any explanations before or after.\nOutput path to use: "png_output_path"\nRequest to draw: " query}
+    pixelArtResponse=split(pixelArtResponse, "```sesi")[1];
+    pixelArtResponse=split(pixelArtResponse, "```")[0];
+    let filename=codeDir+sanitize(query)+"-"+formattedTime+"-pixel-art.sesi";
+    Safe.writeFile(filename, pixelArtResponse);
+    if pixelArtResponse != "" {
+        let cmd=filename;
+        try{sesi(cmd, true); print "[SesiDo]: Created and rendered pixel art for" query "and saved to" imageDir "!"}
+        catch(e){print "[SesiDo]: ⚠ Error rendering pixel art:" str(e)}
+    }
+    print "[SesiDo]: Saved pixel art sesi code for" query " to" codeDir "!";
+    return pixelArtResponse
 }
 
 export fn generateImage(args) {
@@ -1046,6 +1073,7 @@ export fn localTools() {
     register_tool("calculator", calculator, "Calculates math. Args: {expression: string}")
     register_tool("createSVG", createSVG, "Generates SVG. Args: {description: string}")
     register_tool("generateImage", generateImage, "Generates image. Args: {query: string}")
+    register_tool("drawPixelArt", drawPixelArt, "Generates pixel art / avatars / pixel-art visuals. Args: {description: string}")
     register_tool("getImageInfo", getImageInfo, "Analyzes image. Args: {path: string}")
     register_tool("browsePage", browsePage, "Browse and access web pages. Args: {url: string, operation?: string}. Operations: fetch (summarize page), scrape (extract raw text), research (query content), analyze (structure analysis), screenshot (full page capture)")
     register_tool("createSession", createSession, "Creates a new chat session with the specified ID or name. Args: {id: string}")
@@ -1105,6 +1133,7 @@ fn chat() {
     tool_map["calculator"] = calculator
     tool_map["createSVG"] = createSVG
     tool_map["generateImage"] = generateImage
+    tool_map["drawPixelArt"] = drawPixelArt
     tool_map["getImageInfo"] = getImageInfo
     tool_map["browsePage"] = browsePage
     tool_map["createSession"] = createSession
@@ -1158,16 +1187,20 @@ fn chat() {
         
         // --- ReAct loop ---
         let steps_taken = 0
-        let max_steps = 20
+        let max_steps = num(trim(input("Max amount of steps for SesiDo agent to take each turn in this session? 'Enter a numerical value only': ")))
+        if max_steps == null || max_steps < 1 {
+            max_steps = 10
+        }
         let react_history = ""
         let final_res = ""
         let error_count = 0
         
         while steps_taken < max_steps {
+            print "[SesiDo]: Step " + str(steps_taken + 1) + "/" + str(max_steps)
             prompt react_prompt {brain "
                 System: You are an agent with access to these tools:
                 " tools_desc "
-                Solve the user's request step-by-step in as few steps as possible, using tools only when helpful or requested. At each step, output a JSON object with ONLY these keys:
+                Solve the user's request in as few steps as possible, using tools only when helpful or requested. Do not inspect directories, files, tools, or project context before a self-contained request that directly maps to one registered tool. For a request to create pixel art, an avatar, a pixel-art visual, SVG, or image, call the corresponding generation tool in the first step using the user's request as its argument. For drawPixelArt, tool_args_json MUST be a JSON object with a non-empty description string, for example: {\"description\":\"SesiDo avatar in polished pixel art\"}. At each step, output a JSON object with ONLY these keys:
                     - thought(string): your reasoning(be descriptive but avoid verbatim recitation of known long texts)
                     - tool_name(string): name of tool to call, or empty string if done
                     - tool_args_json(string): A VALID JSON string of arguments for the tool (keys MUST be quoted). NEVER leave this empty if you are calling a tool, you MUST provide the args required.
@@ -1196,6 +1229,7 @@ fn chat() {
                 - httpSend for simple HTTP POST requests
                 - createSVG for creating SVGs (this excludes the badge and banner generators)
                 - generateImage for generating images
+                - drawPixelArt for generating pixel art, avatars, and pixel-art visuals; Args: {description: string}
                 - commitMessage for generating commit messages
                 - eval for small Sesi snippets or making directories
                 \n\n### Agent Protocols:
@@ -1227,7 +1261,7 @@ fn chat() {
                     - Use PLAIN TEXT for your response. Do not use Markdown headers(like # or ###), bolding(**), or lists unless specifically requested by the user.
                     - Preserve your \"Architect of Intel\" persona: sharp, sophisticated, and nuanced, but conversational.
                     - If you made changes or generated files, list them clearly in a simple text format. 
-                \nUser: " userInput "\nPrevious steps: " react_history "\nNext Step JSON:"}
+                \nUser: " userInput "\nStep budget: You are currently on step " str(steps_taken + 1) " of " str(max_steps) ". Plan accordingly and finish before the limit.\nPrevious steps: " react_history "\nNext Step JSON:"}
             
             let step_text = ""
             try {
