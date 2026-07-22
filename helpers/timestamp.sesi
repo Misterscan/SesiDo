@@ -7,12 +7,12 @@ allow "std/time" in with {
   Supports friendly aliases ("number", "name") or standard styles ("short", "medium", "long", "full").
   Also supports locale-specific formatting (e.g., "en-US", "fr-FR", "ja-JP").
 */
-export fn getDate(locale: string, dateStyle: string = "name") -> string {
+export fn getDate(locale: string, dateStyle: string) -> string {
   let numerical = "short"
   let with_letters = "medium"
 
   let resolvedStyle = dateStyle
-  if dateStyle == "number" {
+  if dateStyle == "number" || dateStyle == null || dateStyle == "" {
     resolvedStyle = numerical
   } else if dateStyle == "name" {
     resolvedStyle = with_letters
