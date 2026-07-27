@@ -10,6 +10,7 @@
     sesi line-count.sesi README.md
 */
 
+allow "utils/safe" in with Safe
 allow "std/terminal" in with {color}
 
 // Check if file is provided as an argument, else prompt user for filename
@@ -25,15 +26,8 @@ try {
 
 // Returns the number of lines in a file
 export fn getLineCount(file) {
-    let lines = ""
-    let content = ""
-    try {
-    content = read_file(file)
-    lines = split(content, "\n")
-    } catch (err) {
-        print "[line-count.sesi]: Failed to read file at:" file
-        print color(str(err), "red")
-    }
+    let content = Safe.readFile(file)
+    let lines = split(content, "\n")
     return len(lines)
 }
 

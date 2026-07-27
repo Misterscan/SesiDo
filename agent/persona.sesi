@@ -12,3 +12,27 @@ export fn getAgentBasicsMD() -> string {return agentBasicsMD}
 export fn getAgentOptionalMD() -> string {return agentOptionalMD}
 export fn getAgentOtherMD() -> string {return agentOtherMD}
 export fn getAgentTools() -> string {return agentTools}
+
+// Agent voice
+make AgentVoice {
+    let active = false
+    let voiceOn = false
+
+    fn start(self, choice) {
+        self.voiceOn = choice == true
+        if self.voiceOn {
+            speech("Hello, I am Sey-see Do, your AI agent. How can I assist you today?")
+        } else {
+            print "[SesiDo]: Voice mode is disabled."
+        }
+    }
+
+    fn response(self, message) {
+        if self.voiceOn {
+            print "[SesiDo]: Speaking response:" message
+            speech(message)
+        } else {
+            print "[SesiDo]: Voice mode is disabled. Not speaking."
+        }
+    }
+}

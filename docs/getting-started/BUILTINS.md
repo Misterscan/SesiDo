@@ -34,6 +34,55 @@ print "Hello," name
 
 ---
 
+## Speech & Translation Functions
+
+These built-ins provide microphone transcription and text translation.
+
+### speech(text, voice = null, gemini_model = null) -> bool|string
+
+Speak text through the system's installed voice. On macOS this uses `say`, on Windows it uses `System.Speech`, and on Linux it uses `espeak-ng`.
+
+```sesi
+speech("Your local build is complete.")
+speech("Bonjour tout le monde", "Thomas")
+```
+
+**Returns**: `true` after playback finishes.
+
+Pass a Gemini text-to-speech model as the third argument to return base64-encoded audio instead of using the system voice.
+
+---
+
+### from_speech(audio_path, language = null, gemini_model = null) -> string
+
+Transcribe an audio file using `nodejs-whisper`. `language` is optional (for example, `"en"` or `"fr"`).
+
+```sesi
+let transcript = from_speech("meeting.wav", "en")
+print transcript
+```
+
+**Returns**: the transcript as text. `nodejs-whisper` and a downloaded model must be installed (`npx nodejs-whisper download base.en`).
+
+Pass a Gemini model as the third argument to transcribe through Gemini instead of Whisper.
+
+---
+
+### translate(text, to_language, from_language = "en", gemini_model = null) -> string
+
+Translate text with the [`translate`](https://www.npmjs.com/package/translate) package. Language values can use ISO language codes or English language names.
+
+```sesi
+let greeting = translate("Good morning", "es", "en")
+print greeting
+```
+
+**Returns**: translated text.
+
+Pass a Gemini model as the fourth argument to translate through Gemini instead of the `translate` package.
+
+---
+
 ## Type Functions
 
 ### type(value) -> string
@@ -117,6 +166,22 @@ num("hello")       // null (can't convert)
 
 ---
 
+### float(value) -> number
+
+Convert a value to a floating-point number.
+
+```sesi
+float("42")        // 42
+float("3.14")      // 3.14
+float(true)        // 1
+float(false)       // 0
+float("hello")     // null (can't convert)
+```
+
+**Returns**: `number` or `null` if conversion fails
+
+---
+
 ### bool(value) -> bool
 
 Convert a value to boolean.
@@ -131,6 +196,19 @@ bool(null)         // false
 ```
 
 **Returns**: `bool` - Uses truthiness rules
+
+---
+
+### Type Assertion Helpers
+
+Return `true` if the value matches the respective type.
+
+- `is_array(value) -> bool`
+- `is_object(value) -> bool`
+- `is_string(value) -> bool`
+- `is_number(value) -> bool`
+- `is_bool(value) -> bool`
+- `is_null(value) -> bool`
 
 ---
 
@@ -179,6 +257,24 @@ print arr          // [1, 2, 3, 4]
 
 ---
 
+### append(collection, value) -> array | string
+
+Append to an array or concatenate to a string.
+
+```sesi
+let arr = [1, 2]
+append(arr, 3)
+print arr            // [1, 2, 3]
+
+append("Hello", " world")  // "Hello world"
+```
+
+**Note**: For arrays, this modifies in-place and returns the same array.
+
+**Returns**: `array`, `string`, or `null` for unsupported types
+
+---
+
 ### pop(array) -> any
 
 Remove and return the last element of an array.
@@ -221,13 +317,42 @@ split("hello world", " ")  // ["hello", "world"]
 
 ---
 
+### tokenize(string, options = null) -> array
+
+Tokenize text into model token IDs (OpenAI-compatible tiktoken-style encoding).
+
+```sesi
+let ids = tokenize("Hello world")
+print len(ids)
+
+let ids2 = tokenize("Hello world", "gpt-5.6-sol")
+
+let words = tokenize("  Sesi   language   rocks  ", "simple")
+// ["Sesi", "language", "rocks"]
+```
+
+**Options**:
+
+- `model` (`string`, default `"gpt-4o"`): Model name used to pick tokenizer encoding.
+- `encoding` (`string`, optional): Explicit tiktoken encoding override (for example `"o200k_base"`).
+- `mode` (`string`, optional): Set to `"simple"` for basic whitespace tokenization.
+
+You can also pass a string as the second argument directly:
+
+- `tokenize(text, "simple")` for simple word splitting
+- `tokenize(text, "gpt-4o")` to preview a specific models tokenization
+
+**Returns**: `array<number>` (model token IDs), `array<string>` in simple mode, or `null` if input/options are invalid
+
+---
+
 ### to_upper(string) -> string
 
 Converts all alphabetic characters in a string to uppercase.
 
 ```sesi
 to_upper("hello")      // "HELLO"
-to_upper("Sesi V2.0")  // "SESI V2.0"
+to_upper("Sesi V1.7.0")  // "SESI V1.7.0"
 ```
 
 **Returns**: `string` or `null` if not a string
@@ -240,7 +365,7 @@ Converts all alphabetic characters in a string to lowercase.
 
 ```sesi
 to_lower("WORLD")      // "world"
-to_lower("Sesi V2.0")  // "sesi v2.0"
+to_lower("Sesi V1.7.0")  // "sesi v1.7.0"
 ```
 
 **Returns**: `string` or `null` if not a string
@@ -358,6 +483,22 @@ values(obj)        // ["Alice", 30]
 
 ---
 
+### Additional Array / String Utilities
+
+The following utilities work on strings and arrays natively:
+
+- `starts_with(string, prefix) -> bool`
+- `ends_with(string, suffix) -> bool`
+- `index_of(collection, value) -> number`
+- `includes(collection, value) -> bool`
+- `repeat(string, count) -> string`
+- `reverse(array) -> array`
+- `sort(array, compareFn?) -> array`
+- `unique(array) -> array`
+- `flatten(array) -> array`
+
+---
+
 ### map(array, callback) -> array
 
 Creates a new array populated with the results of calling a provided function on every element in the calling array.
@@ -438,18 +579,26 @@ let match = find(numbers, isEven) // 4
 
 ## File System Functions
 
-### read_file(path) -> string
+### read_file(path, mode = "text") -> string
 
 Read the contents of a file as a string.
+
+Modes:
+
+- `"text"` (default): Reads UTF-8 text
+- `"base64"`: Reads raw bytes and returns Base64 text
 
 ```sesi
 let text = read_file("input.txt")
 print text
+
+let image_b64 = read_file("logo.png", "base64")
+print image_b64
 ```
 
 **Note**: Paths are resolved relative to the current working directory.
 
-**Returns**: `string`
+**Returns**: `string` (or `null` for unsupported mode)
 
 ---
 
@@ -468,6 +617,21 @@ if success {print "File written successfully"}
 
 ---
 
+### append_file(path, content) -> bool
+
+Append string content to the end of a file. Creates the file if it does not exist.
+
+```sesi
+let success = append_file("log.txt", "new line\n")
+if success {print "File appended successfully"}
+```
+
+**Note**: Paths are resolved relative to the current working directory.
+
+**Returns**: `bool` (true on success, throws on error)
+
+---
+
 ### write_image(path, base64_content) -> bool
 
 Write base64 encoded string content as an image file. Overwrites the file if it exists.
@@ -475,6 +639,50 @@ Write base64 encoded string content as an image file. Overwrites the file if it 
 ```sesi
 let success = write_image("logo.png", logo_data)
 if success {print "Image safely stored"}
+```
+
+**Note**: Paths are resolved relative to the current working directory.
+
+**Returns**: `bool` (true on success, throws on error)
+
+---
+
+### open(target, options = null) -> bool
+
+Open a URL or local file using the OS default app, or a specific browser/editor/viewer.
+
+```sesi
+open("https://code-with-sesi.netlify.app")
+open("https://code-with-sesi.netlify.app", {browser: "Google Chrome"})
+
+open("reports/dashboard.html", {browser: "Firefox"})
+open("notes/todo.txt", {editor: "Visual Studio Code"})
+open("images/logo.png", {image_viewer: "Preview"})
+```
+
+**Options**:
+
+- `browser` (`string`, optional): Preferred browser app name.
+- `editor` (`string`, optional): Preferred text editor app name.
+- `viewer` (`string`, optional): Preferred image viewer app name.
+- `image_viewer` (`string`, optional): Alias for `viewer`.
+- `mode` (`string`, optional): One of `"auto"`, `"browser"`, `"editor"`, `"viewer"`, `"image_viewer"`.
+
+In `auto` mode (default), Sesi chooses based on file extension and the options you provide.
+
+**Returns**: `bool` (true on success, throws on error)
+
+---
+
+### open_file(path, options = null) -> bool
+
+Open a local file with OS default behavior, or force a preferred editor/viewer/browser.
+
+```sesi
+open_file("README.md")
+open_file("README.md", {editor: "Visual Studio Code"})
+open_file("favicon.png", {viewer: "Preview"})
+open_file("index.html", {mode: "browser", browser: "Google Chrome"})
 ```
 
 **Note**: Paths are resolved relative to the current working directory.
@@ -583,14 +791,61 @@ Convert file or document content between formats.
 
 If the input is a local file path, the converted content is saved to a file of the same name and directory with the target extension, and the path to the output file is returned. If the input is raw string content, the converted content is returned directly.
 
+Native document conversions currently include:
+
+- `md -> html`
+- `html -> md`
+- `html -> txt`
+- `csv -> json`
+- `tsv -> json`
+- `json -> csv`
+- `json -> tsv`
+- `json -> yaml` / `json -> yml`
+- `yaml -> json` / `yml -> json`
+- `svg -> html`
+- `html -> svg`
+- `svg -> txt`
+
+For other `doc` conversions, Sesi falls back to `pandoc` for local files when available, then to the AI conversion fallback if no native or local converter exists.
+
+For `media`, Sesi still prefers external tools such as ImageMagick or `ffmpeg`, but it also has a native fallback for rasterizing `svg` files into `png`, `jpg`, or `jpeg`.
+
+SVG image conversion is available through `convert(media)` for file-path inputs:
+
+- `svg -> png`
+- `svg -> jpg`
+- `svg -> jpeg`
+- `png -> svg`
+- `jpg -> svg`
+- `jpeg -> svg`
+- `gif -> svg`
+- `webp -> svg`
+- `bmp -> svg`
+- `tiff -> svg`
+- `avif -> svg`
+
+Raster image to SVG conversion creates an SVG wrapper with the original image embedded as a data URI. It is intended to make SVG output work reliably for image workflows; it does not perform vector tracing.
+
 ```sesi
 // Raw content conversion
 let html = convert(doc) {file_type: "md", output_type: "html"} {"# Hello"}
 print html // "<h1>Hello</h1>"
 
+let yaml = convert(doc) {file_type: "json", output_type: "yaml"} {"[{\"name\":\"Alice\"}]"}
+print yaml
+
+let markdown = convert(doc) {file_type: "html", output_type: "md"} {"<h1>Hello</h1><p>World</p>"}
+print markdown
+
 // File path conversion
 let out_path = convert(doc) {output_type: "html"} {"document.md"}
 print out_path // "document.html"
+
+let image_path = convert(media) {output_type: "png"} {"diagram.svg"}
+print image_path // "diagram.png"
+
+let svg_path = convert(media) {output_type: "svg"} {"photo.png"}
+print svg_path // "photo.svg"
 ```
 
 **Returns**: `string` (converted content or path to the converted file)
@@ -694,6 +949,64 @@ server.close()
 
 ---
 
+### std/api
+
+Includes Sesi's FastAPI-style HTTP API framework with auto-generated Swagger UI docs at `/docs` and OpenAPI 3.1 specification at `/openapi.json`.
+
+```sesi
+allow "std/api" in with API
+
+fn listUsers(req) {
+  return {"status": 200, "body": {"users": []}}
+}
+
+let app = API.create_app({
+  "title": "Users API",
+  "version": "1.0.0",
+  "description": "A user management API"
+})
+
+app.get("/users", {
+  "summary": "List users",
+  "tags": ["Users"]
+}, listUsers)
+
+let server = app.listen(8080)
+```
+
+#### API Reference:
+
+##### `create_app(config = null)` -> `app`
+
+Creates an API application instance. `config` options include `title`, `version`, `description`, and `base_path`.
+
+##### `app.get(path, schema, handler)` / `app.post` / `app.put` / `app.patch` / `app.delete`
+
+Registers an HTTP route. `schema` can define `summary`, `description`, `tags`, `query`, `body`, `response`, and `deprecated`.
+
+##### `app.use(middleware)`
+
+Registers a request middleware function `fn(req)`.
+
+##### `app.openapi()` -> `object`
+
+Returns the generated OpenAPI 3.1 specification object.
+
+##### `app.routes()` -> `array`
+
+Returns an array of registered route objects.
+
+##### `app.listen(port, options?)` -> `server`
+
+Starts the HTTP server listening on `port`. Options:
+
+- `docs_path` (default: `"/docs"`): Path for Swagger UI documentation.
+- `openapi_path` (default: `"/openapi.json"`): Path for OpenAPI specification JSON.
+- `cors` (default: `true`): Enable CORS headers.
+- `cors_origin` (default: `"*"`): Allowed CORS origins.
+
+---
+
 ## Audio Functions (std/audio)
 
 The `std/audio` module provides functions for sound synthesis and playback.
@@ -715,14 +1028,22 @@ let b64 = Audio.synth(440, 1000, "square")
 // Save a synthesized tone to a file
 Audio.save("tone.wav", "A4", 2000, "sine", {"attack": 50, "release": 500})
 
-// Professional Sample-Based Synthesis (SoundFonts)
-let piano = Audio.sf2("GeneralUser-GS.sf2", {"instrument": 0, "gain": 1.5})
-let string_pad = Audio.sf2("GeneralUser-GS.sf2", {"instrument": 49})
+// Load a WAV file into an audio_sample object
+let sample = Audio.load("drum_loop.wav")
 
-// Native Physical Modeling (Drums)
+// Generate drum hit note objects (base64 WAV)
+let k = Audio.kick(300, 1.0)   // kick drum
+let s = Audio.snare(200, 0.8)  // snare drum
+let h = Audio.hat(50, 0.6)     // hi-hat
+
+// or Native Physical Modeling (Drums)
 let kick = {"note": "C1", "ms": 500, "type": "kick"}
 let snare = {"note": "C4", "ms": 500, "type": "snare"}
 let hat = {"note": "G8", "ms": 250, "type": "hat", "pan": 0.3}
+
+// Professional Sample-Based Synthesis (SoundFonts)
+let piano = Audio.sf2("GeneralUser-GS.sf2", {"instrument": 0, "gain": 1.5})
+let string_pad = Audio.sf2("GeneralUser-GS.sf2", {"instrument": 49})
 
 // Save a sequence (song) of notes
 let song = [
@@ -737,7 +1058,7 @@ Audio.midi("song.mid", song)
 
 // Mix multiple tracks (Native Synthesis and SoundFonts) into a single stereo WAV
 let lead = [piano("C4", 500), piano("E4", 500)]
-let bass = [kick, snare]
+let bass = [k, s] // or let bass = [kick, snare]
 Audio.mix("mix.wav", [lead, bass], "sine", {"saturate": 1.5})
 ```
 
@@ -756,6 +1077,53 @@ Returns a base64 encoded WAV string. `type` can be `"sine"`, `"square"`, `"saw"`
 ### save(path, frequency_or_note, duration, type, options)
 
 Saves a synthesized WAV file to the specified path.
+
+### load(path) -> audio_sample
+
+Loads a WAV file from disk and returns an `audio_sample` object containing the decoded PCM data.
+
+- **`path`**: Path to a `.wav` file.
+- **Returns**: An `audio_sample` object with `samples` (array of normalized floats in `[-1, 1]`) and `sampleRate` (integer, Hz).
+
+```sesi
+allow "std/audio" in with Audio
+let sample = Audio.load("loop.wav")
+print "Sample rate:" sample.sampleRate
+print "Samples:" len(sample.samples)
+```
+
+### kick(duration, volume)
+
+Generates a kick drum hit and returns it as a base64-encoded WAV string ready for use in `mix` or `write_file`.
+
+- **`duration`** _(default: 300)_: Length in milliseconds.
+- **`volume`** _(default: 1.0)_: Amplitude scalar (`0.0`–`1.0`).
+
+```sesi
+let k = Audio.kick(300, 1.0)
+```
+
+### snare(duration, volume)
+
+Generates a snare drum hit and returns it as a base64-encoded WAV string.
+
+- **`duration`** _(default: 200)_: Length in milliseconds.
+- **`volume`** _(default: 1.0)_: Amplitude scalar.
+
+```sesi
+let s = Audio.snare(200, 0.8)
+```
+
+### hat(duration, volume)
+
+Generates a hi-hat hit and returns it as a base64-encoded WAV string.
+
+- **`duration`** _(default: 50)_: Length in milliseconds.
+- **`volume`** _(default: 1.0)_: Amplitude scalar.
+
+```sesi
+let h = Audio.hat(50, 0.6)
+```
 
 ### sequence(path, notes_array, type, options)
 
@@ -823,7 +1191,7 @@ Converts a number of musical bars into milliseconds based on BPM and time signat
 
 ## Drawing Functions (std/draw)
 
-The `std/draw` module provides a comprehensive API for creating static or animated SVG graphics.
+The `std/draw` module provides APIs for SVG graphics and raster pixel drawing.
 
 ```sesi
 allow "std/draw" in with Draw
@@ -929,6 +1297,27 @@ Returns the complete, formatted SVG string.
 
 Saves the formatted SVG drawing to the specified path. Return `true` on success.
 
+### pixel(x, y, color)
+
+Sets one pixel in the raster buffer. Later calls at the same integer coordinate replace the earlier color. Colors may be common names, `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`, `rgb(...)`, or `rgba(...)`.
+
+### pixel_grid(grid, palette, scale = 1, x = 0, y = 0)
+
+Draws a palette-indexed grid into the raster buffer. Rows may be arrays of palette indexes or strings whose characters are palette keys. `scale` expands every logical cell to a square of real pixels; `x` and `y` offset the grid on the output canvas.
+
+```sesi
+Draw.pixel_grid([
+  "0110",
+  "1001",
+  "1001",
+  "0110"
+], {"0": "transparent", "1": "#56d9e9"}, 32)
+```
+
+### save_png(path, width, height, background = "transparent") -> bool
+
+Encodes the raster buffer as a true-color RGBA PNG and saves it to `path`. Pixels outside the requested dimensions are omitted. The optional background accepts the same color formats as `pixel`.
+
 ---
 
 ## System Functions
@@ -977,6 +1366,242 @@ print files
 ```
 
 **Returns**: `string` (stdout)
+
+---
+
+### sesi(filePath, local = false, checkOnly = false) -> string
+
+Parse, compile, and run a Sesi file synchronously in the current Sesi process. Unlike `exec()` or `spawn()`, this does not create a child process. Use it when one Sesi script needs to run another script and wait for it to finish.
+
+```sesi
+sesi("examples/main/01_hello.sesi")
+
+// Allow local file access for the invoked script.
+sesi("examples/main/25_webpage_server.sesi", true)
+
+// Check syntax and compilation without running the file.
+sesi("examples/main/01_hello.sesi", false, true)
+```
+
+**Parameters**:
+
+- `filePath` (`string`): Path to the Sesi file to run.
+- `local` (`bool`, optional): Enables local file access for the invoked script. Defaults to `false`.
+- `checkOnly` (`bool`, optional): Checks syntax and compilation without running the file. Defaults to `false`.
+
+**Returns**: `string` - An empty string after execution, or `"✓ Syntax and Compilation valid"` when `checkOnly` is `true`.
+
+---
+
+### python(code, args) -> string
+
+Execute arbitrary Python code using python3 or python on the host system, and return its standard output. This function is disabled in Sesi safe mode.
+
+```sesi
+// Execute simple Python code:
+let output = python("print('Hello from Python!')")
+print output
+
+// Pass arguments to the Python environment:
+let customArgs = { "name": "Alice", "score": 98 }
+let out = python("
+import os, json
+# Retrieve structured variables from environment
+data = json.loads(os.environ['SESI_ARGS'])
+print('Hello, ' + data['name'] + '! Score is ' + str(data['score']))
+", customArgs)
+print out
+```
+
+**Parameters**:
+
+- `code` (`string`): The Python source code to execute.
+- `args` (`any`, optional): Optional argument data. If provided:
+  - It is serialized to JSON and stored in the child process environment variable `SESI_ARGS`.
+  - If `args` is an array, individual elements are stringified and passed as positional command-line arguments to the python script (available via `sys.argv[1:]`).
+  - Otherwise, the argument itself is stringified and passed as a single command-line argument.
+
+**Returns**: `string` (stdout of the Python process)
+
+---
+
+### js(code, args) -> string
+
+Execute arbitrary JavaScript code using the same Node.js runtime that is running Sesi, and return its standard output. This function is disabled in Sesi safe mode.
+
+```sesi
+// Execute simple JavaScript code:
+let output = js("console.log('Hello from JavaScript!')")
+print output
+
+// Pass structured data to JavaScript:
+let customArgs = { "name": "Alice", "score": 98 }
+let out = js("
+const data = JSON.parse(process.env.SESI_ARGS)
+console.log('Hello, ' + data.name + '! Score is ' + data.score)
+", customArgs)
+print out
+
+// Pass positional command-line arguments:
+let argOut = js("console.log(process.argv[2])", ["first"])
+print argOut
+```
+
+**Parameters**:
+
+- `code` (`string`): The JavaScript source code to execute.
+- `args` (`any`, optional): Optional argument data. If provided:
+  - It is serialized to JSON and stored in the child process environment variable `SESI_ARGS`.
+  - If `args` is an array, individual elements are stringified and passed as positional command-line arguments.
+  - Otherwise, the argument itself is stringified and passed as a single command-line argument.
+
+**Returns**: `string` (stdout of the JavaScript process)
+
+---
+
+### html(body, options) -> string
+
+Create a complete HTML document string from body markup. Use this with `write_file()` to generate an entire webpage.
+
+```sesi
+let title = "My Sesi Webpage"
+let css = "<style>
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #f4f6f8;
+    color: #1f2933;
+  }
+
+  header {
+    padding: 48px 24px;
+    background: #111827;
+    color: white;
+    text-align: center;
+  }
+
+  main {
+    max-width: 760px;
+    margin: 32px auto;
+    padding: 0 20px;
+  }
+
+  section {
+    margin-bottom: 28px;
+    padding: 20px;
+    background: white;
+    border: 1px solid #d8dee6;
+  }
+
+  input {
+    padding: 10px;
+    width: 70%;
+    border: 1px solid #b8c2cc;
+  }
+
+  button {
+    padding: 10px 14px;
+    border: 0;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
+  }
+
+  li {
+    margin-top: 8px;
+  }
+
+  footer {
+    padding: 20px;
+    text-align: center;
+    color: #52606d;
+  }
+</style>"
+
+let page = html("
+<header>
+  <h1>My Sesi Webpage</h1>
+  <p>A complete HTML page generated from a Sesi script.</p>
+</header>
+
+<main>
+  <section>
+    <h2>About</h2>
+    <p>This page was created with the html() builtin and saved with write_file().</p>
+  </section>
+
+  <section>
+    <h2>Todo List</h2>
+    <input id='todoInput' placeholder='Add a task...' />
+    <button onclick='addTodo()'>Add</button>
+    <ul id='todoList'></ul>
+  </section>
+</main>
+
+<footer>
+  <p>Generated by Sesi</p>
+</footer>
+
+<script>
+function addTodo() {
+  const input = document.getElementById('todoInput')
+  const text = input.value.trim()
+
+  if (!text) return
+
+  const item = document.createElement('li')
+  item.textContent = text
+  document.getElementById('todoList').appendChild(item)
+
+  input.value = ''
+}
+</script>
+", {
+  "title": title,
+  "head": css,
+  "lang": "en"
+})
+
+write_file("sesi.html", page)
+print "Wrote sesi.html"
+```
+
+**Parameters**:
+
+- `body` (`string`): Markup to place inside the generated document's `<body>`.
+- `options` (`object`, optional): Document metadata and head content:
+  - `title` (`string`): Text for the generated `<title>` tag. Defaults to `"Sesi"`.
+  - `head` (`string`): Raw markup appended inside `<head>`, commonly CSS, meta tags, or scripts.
+  - `lang` (`string`): Value for the `<html lang="...">` attribute. Defaults to `"en"`.
+
+**Returns**: `string` (complete HTML document)
+
+---
+
+### env(key = null, defaultValue = null) -> string | object
+
+Retrieve the value of an environment variable, or retrieve all environment variables as an object.
+
+```sesi
+// Get a specific environment variable
+let apiKey = env("GEMINI_API_KEY")
+print apiKey
+
+// Get with a fallback default value
+let port = env("PORT", "8080")
+print port
+
+// Get all environment variables as an object
+let allEnvs = env()
+print allEnvs["HOME"]
+```
+
+**Parameters**:
+
+- `key` (`string`, optional): The name of the environment variable. If omitted or null, the entire environment is returned as an object.
+- `defaultValue` (`any`, optional): The fallback value to return if the environment variable is not defined. Defaults to `null`.
+
+**Returns**: `string` (value of the env var), `object` (all env vars if key is omitted), or the `defaultValue` if not found.
 
 ---
 
@@ -1038,7 +1663,7 @@ Default behavior is automatic and requires no special syntax:
 
 Each step is an object with at minimum a `"prompt"` string. Optional keys include:
 
-- `"model"` (default: `"gemini-3.1-flash-lite"`)
+- `"model"` (default: `"gemini-3.5-flash-lite"`)
 - `"temperature"`, `"max_tokens"`, `"top_k"`, `"top_p"`
 - `"thinkingLevel"`, `"cache"`, `"search"`
 
@@ -1057,7 +1682,7 @@ print result["final"]
 Register a custom local name for a model string. Aliases are resolved automatically by `model()`, `image()`, and `workflow()`.
 
 ```sesi
-set_alias("fast", "gemini-3.1-flash-lite")
+set_alias("fast", "gemini-3.5-flash-lite")
 let answer = model("fast") {"Summarize this paragraph."}
 ```
 
@@ -1208,7 +1833,7 @@ for item in results {
 
 ### memory_trim(name, max_tokens = 900000) -> string
 
-Manage the context window of a `memory` binding. If the total token count (estimated at ~4 characters per token) exceeds `max_tokens`, the older half of the memory entries are automatically summarized into a single paragraph using `gemini-3.1-flash-lite`, preserving all key facts and context while reducing token usage.
+Manage the context window of a `memory` binding. If the total token count (estimated at ~4 characters per token) exceeds `max_tokens`, the older half of the memory entries are automatically summarized into a single paragraph using `gemini-3.5-flash-lite`, preserving all key facts and context while reducing token usage.
 
 If the memory is already within the budget, the full memory text is returned unchanged.
 
@@ -1287,6 +1912,28 @@ print sigmoid      // 0.6224593312018546
 
 ---
 
+### trunc(value, length = 0) -> number|string
+
+Truncates a value. If the value is a number, it returns the integer part by removing fractional digits. If the value is a string, it truncates the text to the specified `length`.
+
+```sesi
+// Numeric truncation
+trunc(10.5)        // 10
+trunc(-10.5)       // -10
+
+// String truncation
+trunc("Hello World", 5)  // "Hello"
+```
+
+**Parameters**:
+
+- `value` (`number`|`string`): The value to truncate.
+- `length` (`number`): The character limit for string truncation. Optional.
+
+**Returns**: `number`, `string`, or `null` if the first argument is not a number or string.
+
+---
+
 ## Math Functions (std/math)
 
 Additional math functions are available natively by importing the `"std/math"` module:
@@ -1298,71 +1945,224 @@ print Math.sqrt(16) // 4
 print Math.floor(3.7) // 3
 ```
 
-## Function Introspection (v2 planned)
+## Function Introspection
 
-These are planned for v2:
+### name(func) -> string
+
+Returns the name of a given function.
 
 ```sesi
-// Get function name
-name(func) -> string
-
-// Get function arity (parameter count)
-arity(func) -> number
-
-// Check if value is a function
-is_function(value) -> bool
+fn my_func() {}
+print name(my_func) // "my_func"
 ```
+
+**Parameters**:
+
+- `func` (`fn`): The function to introspect.
+
+**Returns**: `string` (or `null` if the value is not a function)
 
 ---
 
-## Collection Checks (v2 planned)
+### arity(func) -> number
+
+Returns the number of parameters a function expects.
 
 ```sesi
-// Planned for v2:
-is_array(value) -> bool
-is_object(value) -> bool
-is_string(value) -> bool
-is_number(value) -> bool
-is_bool(value) -> bool
-is_null(value) -> bool
+fn add(a, b) { return a + b }
+print arity(add) // 2
 ```
+
+**Parameters**:
+
+- `func` (`fn`): The function to introspect.
+
+**Returns**: `number` (or `null` if the value is not a function)
 
 ---
 
-## String Functions (v2 planned)
+### is_function(value) -> bool
+
+Checks whether a value is a function.
 
 ```sesi
-// Planned for v2:
-length(string) -> number         // Alias for len()
-upper(string) -> string          // Uppercase
-lower(string) -> string          // Lowercase
-trim(string) -> string           // Remove whitespace
-contains(string, substring) -> bool
-starts_with(string, prefix) -> bool
-ends_with(string, suffix) -> bool
-index_of(string, substring) -> number
-slice(string, start, end?) -> string
-replace(string, from, to) -> string
-repeat(string, count) -> string
+fn my_func() {}
+is_function(my_func) // true
+is_function(42)      // false
 ```
+
+**Parameters**:
+
+- `value` (`any`): The value to check.
+
+**Returns**: `bool`
 
 ---
 
-## Array Functions (v2 planned)
+## Collection Checks
+
+### is_array(value) -> bool
+
+### is_object(value) -> bool
+
+### is_string(value) -> bool
+
+### is_number(value) -> bool
+
+### is_bool(value) -> bool
+
+### is_null(value) -> bool
+
+Type-checking utility functions that return a boolean indicating whether the provided value is of the specified type.
 
 ```sesi
-// Planned for v2:
-map(array, fn) -> array          // Transform elements
-filter(array, fn) -> array       // Keep matching elements
-reduce(array, fn, initial) -> any
-find(array, fn) -> any           // First match
-includes(array, value) -> bool
-index_of(array, value) -> number
-reverse(array) -> array
-sort(array, compareFn?) -> array
-unique(array) -> array           // Remove duplicates
-flatten(array) -> array          // Flatten one level
+is_array([1, 2])         // true
+is_object({"a": 1})      // true
+is_string("hello")       // true
+is_number(42)            // true
+is_bool(true)            // true
+is_null(null)            // true
 ```
+
+**Parameters**:
+
+- `value` (`any`): The value to check.
+
+**Returns**: `bool`
+
+---
+
+## String Functions
+
+### length(string) -> number
+
+An alias for `len()`. Returns the length of the string.
+
+```sesi
+length("hello") // 5
+```
+
+**Returns**: `number`
+
+---
+
+### starts_with(string, prefix) -> bool
+
+Checks if a string starts with the given prefix.
+
+```sesi
+starts_with("hello", "he") // true
+```
+
+**Returns**: `bool`
+
+---
+
+### ends_with(string, suffix) -> bool
+
+Checks if a string ends with the given suffix.
+
+```sesi
+ends_with("hello", "lo") // true
+```
+
+**Returns**: `bool`
+
+---
+
+### index_of(collection, value) -> number
+
+Returns the first index at which a given value can be found in the collection (string or array), or -1 if it is not present.
+
+```sesi
+index_of("hello", "l") // 2
+index_of([1, 2, 3], 2) // 1
+```
+
+**Returns**: `number`
+
+---
+
+### repeat(string, count) -> string
+
+Constructs and returns a new string which contains the specified number of copies of the string concatenated together.
+
+```sesi
+repeat("a", 3) // "aaa"
+```
+
+**Returns**: `string`
+
+---
+
+_(Note: `to_upper`, `to_lower`, `trim`, `contains`, `slice`, and `swap` are documented under Collection Functions.)_
+
+---
+
+## Array Functions
+
+### includes(collection, value) -> bool
+
+Checks if a collection (array or string) includes a certain value.
+
+```sesi
+includes([1, 2, 3], 2) // true
+includes("hello", "e") // true
+```
+
+**Returns**: `bool`
+
+---
+
+### reverse(array) -> array
+
+Reverses an array in place and returns it.
+
+```sesi
+reverse([1, 2, 3]) // [3, 2, 1]
+```
+
+**Returns**: `array`
+
+---
+
+### sort(array, compareFn?) -> array
+
+Sorts the elements of an array and returns it. Optionally takes a comparison function.
+
+```sesi
+sort(["c", "a", "b"]) // ["a", "b", "c"]
+```
+
+**Returns**: `array`
+
+---
+
+### unique(array) -> array
+
+Returns a new array with all duplicate elements removed.
+
+```sesi
+unique([1, 1, 2, 3, 3]) // [1, 2, 3]
+```
+
+**Returns**: `array`
+
+---
+
+### flatten(array) -> array
+
+Returns a new array with all sub-array elements concatenated into it recursively up to one level.
+
+```sesi
+flatten([[1, 2], [3, 4]]) // [1, 2, 3, 4]
+```
+
+**Returns**: `array`
+
+---
+
+_(Note: `map`, `filter`, `reduce`, and `find` are documented under Collection Functions.)_
 
 ---
 
@@ -1486,9 +2286,36 @@ allow "std/json" in with Json
 
 let original = {
   "project": "Sesi",
-  "version": "1.6.1"
+  "version": "1.7.0"
 }
 print Json.stringify(original)
+```
+
+### std/base64
+
+Includes Base64 conversion helpers with optional modes:
+
+- `encode(value, mode?)`
+- `decode(base64_text, mode?)`
+
+Modes:
+
+- `"text"` (default): encode/decode UTF-8 strings
+- `"bytes"`: encode/decode raw byte arrays (`array<number>` in range 0..255)
+
+```sesi
+allow "std/base64" in with Base64
+
+let encoded = Base64.encode("Hello, Sesi!")
+print encoded
+
+let decoded = Base64.decode(encoded)
+print decoded // "Hello, Sesi!"
+
+let bin = [0, 255, 16, 32]
+let b64 = Base64.encode(bin, "bytes")
+let back = Base64.decode(b64, "bytes")
+print back // [0, 255, 16, 32]
 ```
 
 ### std/db
@@ -1512,6 +2339,26 @@ users.find(query_object?) -> Returns array of matching documents (returns all if
 users.update(query_object, update_object) -> Returns number of updated documents
 users.delete(query_object) -> Returns number of deleted documents */
 ```
+
+### std/terminal
+
+Includes raw ANSI terminal control functions for building CLI applications: `clear`, `cursor`, `color`.
+
+```sesi
+allow "std/terminal" in with Terminal
+
+// Clear the screen
+Terminal.clear()
+
+// Move cursor to x=10, y=5
+Terminal.cursor(10, 5)
+
+// Output colored text
+print Terminal.color("Hello!", "green")
+```
+
+**Available Colors**: `"red"`, `"green"`, `"yellow"`, `"blue"`, `"magenta"`, `"cyan"`, `"white"`, `"bold"`.
+
 ### std/browser
 
 Includes Sesi's browser automation capabilities powered by Playwright: `launch(options?)`.
@@ -1566,67 +2413,89 @@ browser.close()
 #### API Reference:
 
 ##### `launch(options)` -> `browser`
+
 Launches a browser instance. `options` is an object with:
+
 - `headless` (`bool`, optional): Whether to run browser in headless mode. Defaults to `true`.
 
 ##### `browser.newPage()` -> `page`
+
 Creates a new page/tab.
 
 ##### `browser.close()`
+
 Closes the browser instance.
 
 ##### `page.goto(url)`
+
 Navigates to the specified URL.
 
 ##### `page.content()` -> `string`
+
 Gets the full HTML content of the page.
 
 ##### `page.screenshot(options?)` -> `string` (base64)
+
 Takes a screenshot of the page. Returns a base64 encoded string.
 `options` is an optional object containing:
+
 - `path` (`string`): File path to save the screenshot.
 - `fullPage` (`bool`): Whether to capture the full scrollable page.
 
 ##### `page.click(selector)`
+
 Clicks the element matching the selector.
 
 ##### `page.fill(selector, value)`
+
 Fills the input matching the selector with the specified value.
 
 ##### `page.type(selector, value)`
+
 Types the specified value into the element matching the selector.
 
 ##### `page.press(selector, key)`
+
 Presses the specified key on the element matching the selector.
 
 ##### `page.inner_text(selector)` -> `string`
+
 Gets the inner text of the element matching the selector.
 
 ##### `page.attribute(selector, name)` -> `string`
+
 Gets the value of the attribute `name` of the element matching the selector.
 
 ##### `page.evaluate(script)` -> `any`
+
 Evaluates a JavaScript script/expression in the page context and returns the result.
 
 ##### `page.title()` -> `string`
+
 Gets the page title.
 
 ##### `page.close()`
+
 Closes the page.
 
 ##### `page.pdf(options?)` -> `string` (base64)
+
 Generates a PDF of the page. Returns a base64 encoded string.
 `options` is an optional object containing:
+
 - `path` (`string`): File path to save the PDF.
 - `format` (`string`): Paper format (e.g. `"A4"`, `"Letter"`).
 
 ##### `page.wait_for_selector(selector, options?)`
+
 Waits for the element matching the selector to satisfy the options.
 `options` is an optional object containing:
+
 - `state` (`string`): Wait for state (`"attached"`, `"detached"`, `"visible"`, `"hidden"`).
 - `timeout` (`number`): Timeout in milliseconds.
 
 ##### `page.wait_for_timeout(ms)`
+
 Waits for the specified duration in milliseconds.
 
 ---

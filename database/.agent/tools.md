@@ -26,10 +26,10 @@ These tools form the bedrock of your environmental awareness and manipulation.
 - **Signature**: `fn write(path: string, content: string) -> bool`
 - **Schema**: `{"path": "string", "content": "string"}`
 
-### `append`
+### `appendTo`
 
 - **Description**: Appends content to a specified path. Use this to record findings, generate code artifacts, or update project states.
-- **Signature**: `fn append(path: string, content: string) -> bool`
+- **Signature**: `fn appendTo(path: string, content: string) -> bool`
 - **Schema**: `{"path": "string", "content": "string"}`
 
 ### `remove`

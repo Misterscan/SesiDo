@@ -64,17 +64,7 @@ export fn appendFile(path: str, content: str) -> bool {
   let attempts = 0
   while !success && attempts < 3 {
     try {
-      let existing = ""
-      try {
-        existing = readFile(path)
-      } catch (e) {
-        print "[SesiDo]: Failed to read existing content from file at:" path
-        print "Details:" e
-      }
-      if len(existing) > 0 && !ends_with(existing, "\n") {
-        existing = existing + "\n"
-      }
-      writeFile(path, existing + content)
+      append_file(path, content)
       success = true
     } catch (err) {
         print "[SesiDo]: Failed to append to file at:" path
@@ -103,5 +93,5 @@ export fn moveFile(path: str, dest: str) -> bool {
 }
 
 // Get working directory
-let pwd = ""; try {pwd = env("CD")} catch (e) {} if pwd == null || trim(pwd) == "" {try {pwd = exec("PWD")} catch (e) {}}
+let pwd = ""; try {pwd = env("CD")} catch (e) {} if pwd == null || trim(pwd) == "" {try {pwd = env("PWD")} catch (e) {}}
 export let wsRoot = trim(pwd)

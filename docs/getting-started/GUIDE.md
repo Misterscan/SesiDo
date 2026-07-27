@@ -19,7 +19,7 @@ Sesi is a **clean, minimal, side-effect-oriented** scripting language. It is:
 
 ```sesi
 let name    = "Sesi"
-let version = 2
+let version = 1.7.0
 let active  = true
 let missing         // null (uninitialized)
 ```
@@ -284,10 +284,10 @@ Sesi's unique string-composition primitive. Replaces template literals.
 
 ```sesi
 let name = "Ada"
-let ver  = "2.0"
+let ver  = "1.7.0"
 
 prompt header {"Welcome to Sesi" ver ". Hello," name}
-// header = "Welcome to Sesi 2.0. Hello, Ada"
+// header = "Welcome to Sesi 1.7.0. Hello, Ada"
 
 print header
 write_file("out.txt", header)
@@ -311,7 +311,7 @@ The newline is a real line break _inside the string literal_ — not `\n`, not a
 
 ```sesi
 prompt fullName {first last}
-prompt badge {"[Developer]" fullName}
+prompt badge {"[Developer] "fullName}
 ```
 
 ### Prefer prompt blocks over `+` inside `print`
@@ -332,7 +332,7 @@ print "Hello, " + name + " version " + str(version)
 
 ```sesi
 export fn add(a, b) { return a + b }
-export let VERSION = "2.0"
+export let VERSION = "1.7.0"
 ```
 
 ### Importing — `import` (named)
@@ -390,7 +390,7 @@ try {
 
 ---
 
-## 9. std/draw — SVG Drawing
+## 9. std/draw — SVG and Pixel Drawing
 
 ```sesi
 allow "std/draw" in with Draw
@@ -457,6 +457,16 @@ Draw.save_svg("output.svg", 400, 300)
 Draw.clear()                       // reset buffer
 ```
 
+### Raster Pixels
+
+```sesi
+Draw.pixel(x, y, color)
+Draw.pixel_grid(grid, palette, scale?, x?, y?)
+Draw.save_png(path, width, height, background?)
+```
+
+Pixel calls write to a raster buffer, not the SVG. `pixel_grid` accepts array rows or compact string rows and expands each cell by `scale`. `save_png` encodes the buffer as a true RGBA PNG; the background defaults to transparent.
+
 ### Layer Order
 
 Shapes are rendered in draw-call order — **earlier calls appear behind later ones**.
@@ -468,7 +478,7 @@ Shapes are rendered in draw-call order — **earlier calls appear behind later o
 ### Basic call
 
 ```sesi
-let response = model("gemini-3.5-flash") {"Summarize this:" text}
+let response = model("gemini-3.6-flash") {"Summarize this:" text}
 print response
 ```
 
@@ -478,7 +488,7 @@ print response
 
 ```sesi
 // Config block comes between model name and prompt block
-let result = model("gemini-3.5-flash") {thinkingLevel: "medium", max_tokens: 500} {"Analyze this:" doc}
+let result = model("gemini-3.6-flash") {thinkingLevel: "medium", max_tokens: 500} {"Analyze this:" doc}
 ```
 
 > Config keys are **unquoted identifiers** (schema objects).
@@ -496,19 +506,19 @@ let result = model("gemini-3.5-flash") {thinkingLevel: "medium", max_tokens: 500
 
 ```sesi
 // Vision
-let desc = model("gemini-3.5-flash") {images: "photo.png"} {"Describe this image."}
+let desc = model("gemini-3.6-flash") {images: "photo.png"} {"Describe this image."}
 
 // Streaming
-let r = model("gemini-3.1-flash-lite") {stream: true} {"Write a poem."}
+let r = model("gemini-3.5-flash-lite") {stream: true} {"Write a poem."}
 
 // No cache + search
-let news = model("gemini-3.1-flash-lite") {search, cache: false} {"Latest AI news."}
+let news = model("gemini-3.5-flash-lite") {search, cache: false} {"Latest AI news."}
 ```
 
 ### Image Generation
 
 ```sesi
-let img = image("gemini-2.5-flash-image") {ratio: "16:9", size: "1K"} {"A cyberpunk city at night"}
+let img = image("gemini-3.1-flash-image-lite") {ratio: "16:9", size: "1K"} {"A cyberpunk city at night"}
 write_image("banner.png", img)
 ```
 
@@ -670,6 +680,16 @@ These are always available — no imports needed:
 | `to_json(obj)`   | Serialize object → JSON string   |
 | `from_json(str)` | Parse JSON string → object/array |
 
+### Speech & Translation
+
+| Function | Description |
+| -------- | ----------- |
+| `speech(text, voice?, gemini?)` | Speak text with the system voice or Gemini |
+| `from_speech(path, language?, gemini?)` | Transcribe with Whisper or Gemini |
+| `translate(text, to, from?, gemini?)` | Translate with the `translate` package or Gemini |
+
+`from_speech()` needs Whisper and a local model.
+
 > Always use `to_json()` for serialization. Never use `stringify()`.
 
 ### Math & Randomness (Must be used as "std/math")
@@ -698,13 +718,18 @@ These are always available — no imports needed:
 
 ### Misc
 
-| Function             | Description                            |
-| -------------------- | -------------------------------------- |
-| `input(prompt)`      | Read a line from stdin                 |
-| `print ...`          | Print space-separated values to stdout |
-| `swap(str, a, b)`    | String swap/replacement utility        |
-| `define_tool(n,f,d)` | Register a function as a named AI tool |
-| `list_tools()`       | List all registered tools              |
+| Function             | Description                                         |
+| -------------------- | --------------------------------------------------- |
+| `input(prompt)`      | Read a line from stdin                              |
+| `print ...`          | Print space-separated values to stdout              |
+| `swap(str, a, b)`    | String swap/replacement utility                     |
+| `define_tool(n,f,d)` | Register a function as a named AI tool              |
+| `list_tools()`       | List all registered tools                           |
+| `exec(cmd)`          | Run a system shell command (blocked in Safe Mode)   |
+| `spawn(path)`        | Run a background Sesi script (blocked in Safe Mode) |
+| `python(code, args)` | Run inline Python code (blocked in Safe Mode)       |
+| `js(code, args)`     | Run inline JavaScript code (blocked in Safe Mode)   |
+| `html(body, opts)`   | Build a complete HTML document string               |
 
 ## FOR MORE PLEASE VISIT "BUILTINS.md" EITHER IN docs/ OR IF NOT PRESENT, THEN IN node_modules/@misterscan/sesi/docs/BUILTINS.md
 
@@ -737,7 +762,7 @@ prompt title {
 let obj = {"name": "Ada", "age": 42}
 
 // Config/schema blocks: unquoted identifiers
-let r = model("gemini-3.5-flash") {thinkingLevel: "low", max_tokens: 100} {"Hello"}
+let r = model("gemini-3.6-flash") {thinkingLevel: "low", max_tokens: 100} {"Hello"}
 ```
 
 ### 3. No `const`, no `var`, no `return` at top level
@@ -784,10 +809,21 @@ if i % 2 == 0 { continue }
 ## 16. CLI Commands
 
 ```bash
-sesi <file>.sesi        # Run a script
-sesi <file>.sesi arg1   # Run with args (available as args[])
-sesi -e "sesi code"        # Inline eval (syntax testing)
+npm run sesi <file>.sesi        # Run a script
+npm run sesi <file>.sesi arg1   # Run with args (available as args[])
+npm run eval "sesi code"        # Inline eval (syntax testing)
+npm run help                    # Show CLI help
+npm run lint                    # Run linter
+npm run encrypt                 # Encrypt a .sesi file
+npm run decrypt                 # Decrypt a .sesi file
 ```
+
+Aliases via `node bin/sesi.js`:
+
+- `-e "code"` → inline eval
+- `-l file.sesi` → run file
+- `-h` → help
+- `-enc` / `-dec` → encrypt/decrypt
 
 ---
 
@@ -860,9 +896,12 @@ run_test_suite("Math Tests", results)
 ## 18. Agent Debug Protocol (Mandatory Workflow)
 
 1. **Draft in file** — write the `.sesi` script in your editor
-2. **Eval risky snippets** — `sesi -e "sesi code"` to validate isolated blocks
+2. **Eval risky snippets** — `npm run eval "sesi code"` to validate isolated blocks
 3. **Fix in file only** — never use `sed`, `awk`, or shell manipulation on `.sesi` files
-4. **Run the full script** — `sesi <file>.sesi` only after eval passes
+4. **Run the full script** — `npm run sesi <file>.sesi` only after eval passes
+5. **File-aware help** — `node bin/sesi.js -h <file>.sesi "question"` when stuck
+
+> **ABSOLUTE RULE:** Never edit `.sesi` files via terminal shell tools. Always use the IDE editor directly.
 
 ---
 
@@ -897,8 +936,8 @@ import { fn1, fn2 } from "mymodule"
 try { let data = read_file("f.json") } catch (err) { print "Error:" err }
 
 // AI
-let r = model("gemini-3.5-flash") {thinkingLevel: "low"} {"Question:" q}
-let img = image("gemini-2.5-flash-image") {ratio: "1:1"} {"A forest"}
+let r = model("gemini-3.6-flash") {thinkingLevel: "low"} {"Question:" q}
+let img = image("gemini-3.1-flash-image-lite") {ratio: "1:1"} {"A forest"}
 write_image("out.png", img)
 
 // Network
