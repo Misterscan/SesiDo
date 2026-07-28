@@ -1,6 +1,6 @@
 // SesiDo Engine
 // Imports
-allow "std/db" in with DB; allow "std/browser" in with{launch}; allow "./agent/persona" in with Persona; allow "./utils/safe" in with Safe; allow "./helpers/timestamp" in with{localTime, universalTime, formattedTime}
+allow "std/db" in with DB; allow "std/browser" in with{launch}; allow "../agent/persona" in with Persona; allow "../utils/safe" in with Safe; allow "../helpers/timestamp" in with{localTime, universalTime, formattedTime}
 // Variables
 let workspaceRoot = Safe.wsRoot+"/SesiDo/"; let dbDir=workspaceRoot+"database/"; let artifactsDir=workspaceRoot+".artifacts/"; let logsDir=workspaceRoot+"logs/"; let codeDir=artifactsDir+"code/"; let imageDir=artifactsDir+"images/"; let svgDir=artifactsDir+"svgs/"; let summaryDir=artifactsDir+"summaries/"; let researchDir=artifactsDir+"research/"; let browserDir=artifactsDir+"browser/"
 // Make sure directories exist

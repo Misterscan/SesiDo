@@ -5,9 +5,9 @@
 
 allow "std/db" in with DB
 allow "std/browser" in with {launch}
-allow "./agent/persona" in with Persona
-allow "./utils/safe" in with Safe
-allow "./helpers/timestamp" in with {
+allow "../agent/persona" in with Persona
+allow "../utils/safe" in with Safe
+allow "../helpers/timestamp" in with {
     localTime, universalTime, formattedTime
 }
 

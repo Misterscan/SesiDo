@@ -1,2 +1,2 @@
 // SesiDo Research Tool
-allow "../../build/index" in with SesiDo; set_alias("SesiDo", "gemini-3.5-flash"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [RESEARCH]"; SesiDo.research(args); print "[RESEARCH ENDED]"
+allow "build/index" in with SesiDo; set_alias("SesiDo", "gemini-3.5-flash"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [RESEARCH]"; SesiDo.research(args); print "[RESEARCH ENDED]"
