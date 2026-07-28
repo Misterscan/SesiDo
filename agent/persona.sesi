@@ -1,6 +1,6 @@
 // SesiDo Persona Retrieval
 // Import safe functions, docs, and helpers
-allow "utils/safe" in with Safe; allow "./docs" in with Docs; allow "./helpers" in with Helpers
+allow "../utils/safe" in with Safe; allow "./docs" in with Docs; allow "./helpers" in with Helpers
 // Load persona components
 let sysPath = "sesi_modules/SesiDo/database/.agent/SYSTEM_INSTRUCTION.md"; let toolsPath = "sesi_modules/SesiDo/database/.agent/tools.md"
 let systemInstruction = Safe.readFile(sysPath); let toolsMD = Safe.readFile(toolsPath); if systemInstruction == null { sysPath = "database/.agent/SYSTEM_INSTRUCTION.md"; systemInstruction = Safe.readFile(sysPath) }if toolsMD == null { toolsPath = "database/.agent/tools.md"; toolsMD = Safe.readFile(toolsPath) }

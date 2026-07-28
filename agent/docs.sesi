@@ -1,6 +1,6 @@
 // SesiDo Doc Retrieval
 // Import safe functions and define directories
-allow "utils/safe" in with Safe; let basicsDir = list_dir("docs/getting-started"); if basicsDir = null {basicsDir = list_dir("sesi_modules/SesiDo/docs/getting-started")} let optionalDir = list_dir("docs/getting-started/optional"); if optionalDir = null {optionalDir = list_dir("sesi_modules/SesiDo/docs/getting-started/optional")} let otherDir = list_dir("docs"); if otherDir = null {otherDir = list_dir("sesi_modules/SesiDo/docs")}
+allow "../utils/safe" in with Safe; let basicsDir = list_dir("docs/getting-started"); if basicsDir = null {basicsDir = list_dir("sesi_modules/SesiDo/docs/getting-started")} let optionalDir = list_dir("docs/getting-started/optional"); if optionalDir = null {optionalDir = list_dir("sesi_modules/SesiDo/docs/getting-started/optional")} let otherDir = list_dir("docs"); if otherDir = null {otherDir = list_dir("sesi_modules/SesiDo/docs")}
 // Get getting-started content
 export fn getBasicsContent() -> string {let content = ""; for file in basicsDir {if contains(file, ".") {            content = content + "\n--- " + file + " ---\n" + Safe.readFile("docs/getting-started/" + file); if content == "" { content = content + "\n--- " + file + " ---\n" + Safe.readFile("sesi_modules/SesiDo/docs/getting-started/" + file) }}}return content}
 // Get getting-started-optional content
