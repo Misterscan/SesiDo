@@ -1,2 +1,2 @@
 // SesiDo Debug Tool
-allow "build/index" in with SesiDo; set_alias("SesiDo-Pro", "gemini-3.1-pro-preview"); set_alias("SesiDo-Lite", "gemini-3.1-flash-lite"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [DEBUG] "; SesiDo.debugCode(args); print "[DEBUG COMPLETED]"
+allow "../../build/index" in with SesiDo; set_alias("SesiDo-Pro", "gemini-3.1-pro-preview"); set_alias("SesiDo-Lite", "gemini-3.1-flash-lite"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [DEBUG] "; SesiDo.debugCode(args); print "[DEBUG COMPLETED]"
