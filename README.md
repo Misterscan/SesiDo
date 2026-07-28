@@ -76,7 +76,7 @@ You can also use other models by changing the alias in the `index.sesi` file.
 On top of that, you can use specific variables exported by the index.sesi file.
 
 ```sesi
-allow "SesiDo" in with Config
+allow "SesiDo/build" in with Config
 
 export let modelNames = Config.sesiDoModels
 export let ogNames = Config.ogNames
@@ -117,6 +117,8 @@ export fn settings(){
    Test example:
    allow "settings" in with SesiDo
    SesiDo.settings()
+   set_alias(SesiDo.defaultModel, SesiDo.defaultOgName)
+   ...the rest of your script...
 
    Run it and see the output.
    Then try to change the settings and run it again to see the difference.
@@ -149,17 +151,17 @@ Now you're ready to use SesiDo!
 
 ## Exported Workflows
 
-| Function | Arguments | Result |
-| --- | --- | --- |
-| `writeCode` | `{"query": "..."}` | Generates a code response. |
-| `research` | `{"query": "..."}` | Researches a topic and saves a report. |
-| `summarize` | `{"text": "..."}` or `{"path": "..."}` | Summarizes text or a local file. |
-| `calculator` | `{"expression": "..."}` | Calculates an expression. |
-| `createSVG` | `{"description": "..."}` | Generates and renders SVG artwork. |
-| `drawPixelArt` | `{"description": "..."}` | Generates and renders pixel art. |
-| `generateImage` | `{"query": "..."}` | Generates an image. |
-| `getImageInfo` | `{"path": "..."}` | Analyzes an image. |
-| `browsePage` | `{"url": "...", "operation": "fetch"}` | Fetches, extracts, researches, analyzes, or screenshots a page. |
+| Function        | Arguments                              | Result                                                          |
+| --------------- | -------------------------------------- | --------------------------------------------------------------- |
+| `writeCode`     | `{"query": "..."}`                     | Generates a code response.                                      |
+| `research`      | `{"query": "..."}`                     | Researches a topic and saves a report.                          |
+| `summarize`     | `{"text": "..."}` or `{"path": "..."}` | Summarizes text or a local file.                                |
+| `calculator`    | `{"expression": "..."}`                | Calculates an expression.                                       |
+| `createSVG`     | `{"description": "..."}`               | Generates and renders SVG artwork.                              |
+| `drawPixelArt`  | `{"description": "..."}`               | Generates and renders pixel art.                                |
+| `generateImage` | `{"query": "..."}`                     | Generates an image.                                             |
+| `getImageInfo`  | `{"path": "..."}`                      | Analyzes an image.                                              |
+| `browsePage`    | `{"url": "...", "operation": "fetch"}` | Fetches, extracts, researches, analyzes, or screenshots a page. |
 
 `main()` is also exported for projects that intentionally want to launch the interactive chat loop.
 
@@ -167,17 +169,17 @@ Now you're ready to use SesiDo!
 
 The repository includes standalone wrappers for manually running the same workflows. Each command accepts a prompt after the script name and saves outputs under `.artifacts/`.
 
-| Command | Purpose |
-| --- | --- |
-| `npm run gen:code "prompt"` | Generate a code response. |
-| `npm run gen:image "prompt"` | Generate an image. |
-| `npm run gen:pixel "prompt"` | Generate and render pixel art to `.artifacts/images/`. |
-| `npm run gen:svg "prompt"` | Generate and render an SVG. |
-| `npm run research "topic"` | Run the research workflow. |
-| `npm run summarize "text or path"` | Run the summarization workflow. |
-| `npm run browser "url"` | Run the browser workflow. |
-| `npm run debug "path"` | Run the debugging workflow. |
-| `npm run calculator "expression"` | Run the calculator workflow. |
+| Command                            | Purpose                                                |
+| ---------------------------------- | ------------------------------------------------------ |
+| `npm run gen:code "prompt"`        | Generate a code response.                              |
+| `npm run gen:image "prompt"`       | Generate an image.                                     |
+| `npm run gen:pixel "prompt"`       | Generate and render pixel art to `.artifacts/images/`. |
+| `npm run gen:svg "prompt"`         | Generate and render an SVG.                            |
+| `npm run research "topic"`         | Run the research workflow.                             |
+| `npm run summarize "text or path"` | Run the summarization workflow.                        |
+| `npm run browser "url"`            | Run the browser workflow.                              |
+| `npm run debug "path"`             | Run the debugging workflow.                            |
+| `npm run calculator "expression"`  | Run the calculator workflow.                           |
 
 For example:
 
@@ -189,15 +191,15 @@ npm run gen:pixel "SesiDo avatar, neon themed"
 
 The module registers these aliases from `index.sesi` when it is imported.
 
-| Alias | Configured model |
-| --- | --- |
-| `SesiDo` | `gemini-3.6-flash` |
-| `SesiDo-Heavy` | `gemini-3.5-flash` |
-| `SesiDo-Pro` | `gemini-3.1-pro-preview` |
-| `SesiDo-Lite` | `gemini-3.1-flash-lite` |
-| `SesiDo-Lite-Power` | `gemini-3.5-flash-lite` |
-| `SesiDo-Flash` | `gemini-3-flash-preview` |
-| `SesiDo-Image` | `gemini-3.1-flash-image` |
+| Alias               | Configured model              |
+| ------------------- | ----------------------------- |
+| `SesiDo`            | `gemini-3.6-flash`            |
+| `SesiDo-Heavy`      | `gemini-3.5-flash`            |
+| `SesiDo-Pro`        | `gemini-3.1-pro-preview`      |
+| `SesiDo-Lite`       | `gemini-3.1-flash-lite`       |
+| `SesiDo-Lite-Power` | `gemini-3.5-flash-lite`       |
+| `SesiDo-Flash`      | `gemini-3-flash-preview`      |
+| `SesiDo-Image`      | `gemini-3.1-flash-image`      |
 | `SesiDo-Image-Lite` | `gemini-3.1-flash-lite-image` |
 
 Override an alias from a consuming script with `SesiDo.setModel(alias, modelName)`.
