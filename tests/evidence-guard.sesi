@@ -1,0 +1,51 @@
+allow "./../agent/ledger/evidence" in with Evidence
+allow "../utils/safe" in with Safe
+
+let failures = 0
+
+fn check(condition, message) {
+    if condition {
+        print "PASS:" message
+    } else {
+        print "FAIL:" message
+        failures = failures + 1
+    }
+}
+
+let no_evidence = Evidence.newLedger()
+let no_requirements = Evidence.requirementsFor("answer conversationally")
+let blocked_read = Evidence.guardFinal("I read the file.", no_evidence, no_requirements)
+check(contains(blocked_read, "blocked"), "unsupported read claim is blocked")
+
+let read_evidence = Evidence.observe(Evidence.newLedger(), "read", "Success: Read example.sesi")
+let allowed_read = Evidence.guardFinal("I read the file.", read_evidence, no_requirements)
+check(allowed_read == "I read the file.", "successful read permits read claim")
+
+let failed_run = Evidence.observe(Evidence.newLedger(), "runSesi", "Execution error: bad token")
+check(failed_run["error_reproduced"], "failed execution records reproduced error")
+check(!failed_run["execution_passed"], "failed execution does not record a pass")
+
+let successful_run = Evidence.observe(failed_run, "runSesi", "Success: runSesi executed example.sesi.")
+check(successful_run["execution_passed"], "successful rerun records execution pass")
+
+let artifact = Evidence.observe(Evidence.newLedger(), "drawPixelArt", "Success: artifact_verified=true; output=x.png")
+check(artifact["artifact_verified"], "verified generator observation records artifact")
+
+let debug_requirements = Evidence.requirementsFor("fix the failed generated script")
+let incomplete = Evidence.guardFinal("Done.", Evidence.newLedger(), debug_requirements)
+check(contains(incomplete, "Still required"), "full completion is blocked while required stages are false")
+check(Evidence.shouldBlockMutation("fix the failed generated script", Evidence.newLedger(), "write"), "mutation is blocked before failure reproduction")
+check(!Evidence.shouldBlockMutation("fix the failed generated script", failed_run, "write"), "mutation is allowed after failure reproduction")
+
+let conversational_requirements = Evidence.requirementsFor("explain what an error message means")
+check(!conversational_requirements["error_reproduced"], "conversational error questions do not require tool execution")
+
+check(Evidence.noNewInformation("[]", "[]"), "identical null observations count as no new information")
+check(!Evidence.noNewInformation("[]", "[\"file\"]"), "changed observations count as new information")
+
+if failures > 0 {
+    print "Evidence-guard failures:" failures
+    Safe.readFile("tests/__force_nonzero_for_failed_evidence_guard__")
+}
+
+print "All evidence-guard checks passed."

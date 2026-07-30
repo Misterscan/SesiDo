@@ -94,4 +94,6 @@ export fn moveFile(path: str, dest: str) -> bool {
 
 // Get working directory
 let pwd = ""; try {pwd = env("CD")} catch (e) {} if pwd == null || trim(pwd) == "" {try {pwd = env("PWD")} catch (e) {}}
+// Extract the root directory from the working directory
+if contains(pwd, "/") {let parts = split(pwd, "/"); if len(parts) > 0 {pwd = "./../" + parts[len(parts) - 1] + "/"}}
 export let wsRoot = trim(pwd)

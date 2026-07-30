@@ -56,11 +56,17 @@ These tools form the bedrock of your environmental awareness and manipulation.
 - **Signature**: `fn safeRun(command: string) -> string`
 - **Schema**: `{"command": "string"}`
 
+## `runSesi`
+
+- **Description**: Executes sesi scripts.
+- **Signature**: `fn runSesi(path: string) -> string`
+- **Schemas**: `{"path": "string"}`
+
 ### `eval`
 
-- **Description**:
-- **Signature**:
-- **Schema**:
+- **Description**: Evaluates sesi code.
+- **Signature**: `fn eval(code: string) -> string`
+- **Schema**: `{"code": "string"}`
 
 ---
 
@@ -96,7 +102,7 @@ These tools form the bedrock of your environmental awareness and manipulation.
 
 ### `summarize`
 
-- **Description**: Summarize a given text or file.
+- **Description**: Summarize a given text or file. Accepts explicit paths.
 - **Signature**: `fn summarize(text: string) -> string`
 - **Schema**: `{"text": "string"}`
 
@@ -114,7 +120,7 @@ These tools form the bedrock of your environmental awareness and manipulation.
 
 ### `drawPixelArt`
 
-- **Description**: Generate a pixel-art visual or avatar directly from a self-contained visual description. Do not inspect the workspace before calling it unless the user asks to use a specific local asset.
+- **Description**: Generate a pixel-art visual or avatar directly from a self-contained visual description.
 - **Signature**: `fn drawPixelArt(args: object) -> string`
 - **Schema**: `{"description": "string"}`
 

@@ -1,0 +1,80 @@
+allow "../agent/ledger/pixel-grid" in with PixelGrid
+
+let failures = 0
+
+fn check(condition, message) {
+    if condition {
+        print "PASS:" message
+    } else {
+        print "FAIL:" message
+        failures = failures + 1
+    }
+}
+
+let valid_spec = {
+    "palette": {"0": "transparent", "1": "#ffffff", "unused": "#ff00ff"},
+    "grid": [["0", "1"], ["1", "0"]],
+    "scale": 8,
+    "width": 2,
+    "height": 2,
+    "variations": [{"name": "dark", "palette": {"1": "#111111"}}]
+}
+let valid_result = PixelGrid.validate(valid_spec, true)
+check(valid_result["valid"], "valid grid and used-token variation pass")
+check(len(valid_result["used_tokens"]) == 2, "every used token is collected")
+check(len(valid_result["warnings"]) == 1, "unused palette key emits one warning")
+
+let missing_token_spec = {
+    "palette": {"0": "transparent"},
+    "grid": [["0", "missing"]],
+    "variations": []
+}
+let missing_token_result = PixelGrid.validate(missing_token_spec)
+check(!missing_token_result["valid"], "grid token absent from palette fails")
+
+let ragged_spec = {
+    "palette": {"0": "transparent"},
+    "grid": [["0", "0"], ["0"]],
+    "variations": []
+}
+let ragged_result = PixelGrid.validate(ragged_spec)
+check(!ragged_result["valid"], "unequal row widths fail")
+
+let unused_variation_spec = {
+    "palette": {"0": "transparent", "unused": "#ffffff"},
+    "grid": [["0"]],
+    "variations": [{"name": "no-op", "palette": {"unused": "#000000"}}]
+}
+let unused_variation_result = PixelGrid.validate(unused_variation_spec, true)
+check(!unused_variation_result["valid"], "variation changing only an unused token fails")
+
+let missing_variation_spec = {
+    "palette": {"0": "transparent"},
+    "grid": [["0"]],
+    "variations": []
+}
+let missing_variation_result = PixelGrid.validate(missing_variation_spec, true)
+check(!missing_variation_result["valid"], "requested variations must be present")
+
+make_dir("SesiDo/.artifacts/images")
+make_dir("SesiDo/.artifacts/code")
+let output_path = "SesiDo/.artifacts/images/pixel-grid-validation-fixture.png"
+let script_path = "SesiDo/.artifacts/code/pixel-grid-validation-fixture.sesi"
+let script = PixelGrid.buildScript(valid_spec, output_path)
+check(contains(script, ", 16, 16)"), "canvas dimensions are derived from grid size times scale")
+write_file(script_path, script)
+sesi(script_path, true)
+
+let artifact_verified = false
+try {
+    read_file(output_path)
+    artifact_verified = true
+} catch (e) {}
+check(artifact_verified, "validated script executes and output file exists")
+
+if failures > 0 {
+    print "Pixel-grid validation failures:" failures
+    read_file("tests/__force_nonzero_for_failed_validation__")
+}
+
+print "All pixel-grid validation checks passed."

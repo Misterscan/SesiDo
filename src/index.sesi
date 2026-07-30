@@ -631,7 +631,20 @@ The Sesi drawing API is:
         1. Always allow \"std/draw\" in with Draw at the beginning.
         2. Sesi does not use let or var or function definitions inside the drawing statements. Just call Draw functions.
         3. Make sure to call Draw.save_svg(output_path, width, height) at the end.
-        4. Output ONLY the Sesi script code inside a ```sesi code block. Do not write any explanations before or after.
+        4. Output ONLY the Sesi script code inside a ```sesi code block. 
+        Use this function to escape text for SVG before writing it to the SVG file:
+        ```
+        fn escapeSvgText(text) {
+            let s=str(text)
+            s=swap(s, \"&\", \"&amp;\")
+            s=swap(s, \"<\", \"&lt;\")
+            s=swap(s, \">\", \"&gt;\")
+            s=swap(s, \"\"\", \"&quot;\")
+            s=swap(s, \"'\", \"&apos;\")
+            return s
+        }
+        ```
+        Do not write any explanations before or after.
 
         Output path to use: " svg_output_path "
 
@@ -663,7 +676,7 @@ export fn drawPixelArt(args){
     print "[SesiDo]: Creating pixel art for:" query;
     let png_output_path=imageDir+sanitize(query)+"-"+formattedTime+"-pixel-art.png";
     let pixelArtResponse=false;
-    pixelArtResponse=model("SesiDo-Lite-Power"){brain}{"You are a Sesi programming language code generator.\nWrite a Sesi script using the 'std/draw' module to draw pixel art based on the following description. Use a grid of squares to represent pixels, and choose colors that match the description. The Sesi drawing API is:\n\n allow \"std/draw\" in with Draw\nDraw.clear()\n- Draw.pixel(x, y, color)\n- Draw.pixel_grid(grid, palatte, scale = 1, x = 0, y = 0)\n- Draw.save_png(path, width, height, background = \"transparent\")\n -- \nsave output.\nRules:\n1. Always allow \"std/draw\" in with Draw at the beginning.\n2. Sesi does not use let or var or function definitions inside the drawing statements. Just call Draw functions.\n3. Make sure to call Draw.save_png() at the end.\n4. Output ONLY the Sesi script code inside a ```sesi code block. Do not write any explanations before or after.\nOutput path to use: "png_output_path"\nRequest to draw: " query}
+    pixelArtResponse=model("SesiDo-Lite-Power"){brain}{"You are a Sesi programming language code generator.\nWrite a Sesi script using the 'std/draw' module to draw pixel art based on the following description. Use a grid of squares to represent pixels, and choose colors that match the description. The Sesi drawing API is:\n\n allow \"std/draw\" in with Draw\nDraw.clear()\n- Draw.pixel(x, y, color)\n- Draw.pixel_grid(grid, palette, scale = 1, x = 0, y = 0)\n- Draw.save_png(path, width, height, background = \"transparent\")\n -- \nsave output.\nRules:\n1. Always allow \"std/draw\" in with Draw at the beginning.\n2. Sesi range loops use 'for x = 0 to 31' syntax. Never write 'for x from ...' or 'for x in range(...)'.\n3. Sesi does not use let or var or function definitions inside drawing statements unless defining variables at the top. Just call Draw functions.\n4. Make sure to call Draw.save_png() at the end.\n5. Output ONLY the Sesi script code inside a ```sesi code block. Do not write any explanations before or after.\nOutput path to use: "png_output_path"\nRequest to draw: " query}
     pixelArtResponse=split(pixelArtResponse, "```sesi")[1];
     pixelArtResponse=split(pixelArtResponse, "```")[0];
     let filename=codeDir+sanitize(query)+"-"+formattedTime+"-pixel-art.sesi";
@@ -711,6 +724,9 @@ export fn getImageInfo(args) {
 
     if imagePath == null || imagePath == "" {
         return "Error: getImageInfo requires an image path."
+    }
+    if !contains(imagePath, "/") {
+        imagePath = imageDir + imagePath
     }
     print "[SesiDo]: Analyzing image at:" imagePath
     let info = model("SesiDo-Flash") {images: imagePath, lowThink, lowTemp} {brain "

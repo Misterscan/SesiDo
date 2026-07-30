@@ -1,0 +1,149 @@
+/*
+    Validation and source construction for generated Draw.pixel_grid calls.
+
+    Pixel art is represented as data first, validated, then serialized into a
+    Sesi script. This keeps malformed model output away from Draw.pixel_grid.
+*/
+
+fn has_item(items, wanted) -> bool {
+    for item in items {
+        if str(item) == str(wanted) { return true }
+    }
+    return false
+}
+
+fn safe_name(value) -> string {
+    let name = str(value)
+    name = swap(name, " ", "-")
+    name = swap(name, "/", "-")
+    name = swap(name, "\\", "-")
+    name = swap(name, ".", "-")
+    if len(name) > 30 { name = slice(name, 0, 30) }
+    if name == "" { name = "variation" }
+    return name
+}
+
+export fn requestsVariations(request) -> bool {
+    let text = to_lower(str(request))
+    return contains(text, "variation") || contains(text, "variant") || contains(text, "versions") || contains(text, "alternatives")
+}
+
+export fn validate(spec, require_variations = false) {
+    let errors = []
+    let warnings = []
+    let used_tokens = []
+
+    if spec == null || type(spec) != "object" {
+        push(errors, "Pixel specification must be an object.")
+        return {"valid": false, "errors": errors, "warnings": warnings, "used_tokens": used_tokens}
+    }
+
+    let palette = spec["palette"]
+    let grid = spec["grid"]
+    if palette == null || type(palette) != "object" || len(keys(palette)) == 0 {
+        push(errors, "Palette must be a non-empty object keyed by grid token.")
+    }
+    if grid == null || type(grid) != "array" || len(grid) == 0 {
+        push(errors, "Grid must be a non-empty array of rows.")
+    }
+
+    let expected_width = -1
+    if grid != null && type(grid) == "array" {
+        let row_number = 0
+        for row in grid {
+            row_number = row_number + 1
+            if type(row) != "array" {
+                push(errors, "Grid row " + str(row_number) + " must be an array.")
+            } else {
+                if expected_width == -1 {
+                    expected_width = len(row)
+                    if expected_width == 0 { push(errors, "Grid rows cannot be empty.") }
+                } else if len(row) != expected_width {
+                    push(errors, "Grid row " + str(row_number) + " has width " + str(len(row)) + "; expected " + str(expected_width) + ".")
+                }
+                for cell in row {
+                    let token = str(cell)
+                    if !has_item(used_tokens, token) { push(used_tokens, token) }
+                    if palette != null && type(palette) == "object" && palette[token] == null {
+                        push(errors, "Grid token '" + token + "' is absent from the palette.")
+                    }
+                }
+            }
+        }
+    }
+
+    if palette != null && type(palette) == "object" {
+        for palette_key in keys(palette) {
+            if !has_item(used_tokens, palette_key) {
+                push(warnings, "Unused palette key: " + str(palette_key))
+            }
+        }
+    }
+
+    let variations = spec["variations"]
+    if require_variations && (variations == null || type(variations) != "array" || len(variations) == 0) {
+        push(errors, "The request asks for variations, but none were generated.")
+    }
+    if variations != null {
+        if type(variations) != "array" {
+            push(errors, "Variations must be an array.")
+        } else {
+            let variation_number = 0
+            for variation in variations {
+                variation_number = variation_number + 1
+                let changed_used_token = false
+                if type(variation) != "object" || type(variation["palette"]) != "object" {
+                    push(errors, "Variation " + str(variation_number) + " must contain a palette object.")
+                } else {
+                    let overrides = variation["palette"]
+                    for token in keys(overrides) {
+                        if has_item(used_tokens, token) && palette[token] != overrides[token] {
+                            changed_used_token = true
+                        }
+                    }
+                    if !changed_used_token {
+                        push(errors, "Variation " + str(variation_number) + " does not change any token used by the grid.")
+                    }
+                }
+            }
+        }
+    }
+
+    let row_count = 0
+    if grid != null { row_count = len(grid) }
+    return {
+        "valid": len(errors) == 0,
+        "errors": errors,
+        "warnings": warnings,
+        "used_tokens": used_tokens,
+        "row_width": expected_width,
+        "row_count": row_count
+    }
+}
+
+export fn mergedPalette(base_palette, overrides) {
+    let merged = {}
+    for token in keys(base_palette) { merged[token] = base_palette[token] }
+    if overrides != null {
+        for token in keys(overrides) { merged[token] = overrides[token] }
+    }
+    return merged
+}
+
+export fn buildScript(spec, output_path, palette_override = null) -> string {
+    let palette = mergedPalette(spec["palette"], palette_override)
+    let grid = spec["grid"]
+    let scale = spec["scale"]
+    if scale == null || scale < 1 { scale = 1 }
+    let width = len(grid[0]) * scale
+    let height = len(grid) * scale
+
+    return "allow \"std/draw\" in with Draw\n" + "Draw.clear()\n" + "let palette = " + to_json(palette) + "\n" + "let grid = " + to_json(grid) + "\n" + "Draw.pixel_grid(grid, palette, " + str(scale) + ", 0, 0)\n" + "Draw.save_png(" + to_json(output_path) + ", " + str(width) + ", " + str(height) + ")\n"
+}
+
+export fn variationName(variation, index) -> string {
+    if variation != null && variation["name"] != null {
+        return safe_name(variation["name"])
+    }
+    return "variation-" + str(index)
+}

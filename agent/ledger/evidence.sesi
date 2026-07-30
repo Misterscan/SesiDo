@@ -1,0 +1,171 @@
+/*
+    Evidence and completion-state helpers for the SesiDo ReAct loop.
+
+    A stage is only set from a concrete tool observation. Final response claims
+    are checked against those stages before they are shown to the user.
+*/
+
+fn has_item(items, wanted) -> bool {
+    for item in items {
+        if item == wanted { return true }
+    }
+    return false
+}
+
+fn observation_failed(observation) -> bool {
+    if observation == null { return true }
+    let text = to_lower(trim(str(observation)))
+    if text == "" { return true }
+    if contains(text, "error:") { return true }
+    if contains(text, "execution error") { return true }
+    if contains(text, "failed") { return true }
+    if contains(text, "rejected") { return true }
+    if contains(text, "not registered") { return true }
+    return false
+}
+
+fn is_mutation(tool_name) -> bool {
+    let mutation_tools = [
+        "write", "appendTo", "remove", "move", "newDir", "makeDir",
+        "fileOps", "lineSwap", "createSVG", "drawPixelArt", "generateImage"
+    ]
+    return has_item(mutation_tools, tool_name)
+}
+
+fn is_execution(tool_name) -> bool {
+    return tool_name == "runSesi" || tool_name == "safeRun" || tool_name == "eval"
+}
+
+fn is_artifact_tool(tool_name) -> bool {
+    return tool_name == "drawPixelArt" || tool_name == "createSVG" || tool_name == "generateImage"
+}
+
+export fn newLedger() {
+    return {
+        "target_located": false,
+        "source_inspected": false,
+        "error_reproduced": false,
+        "patch_written": false,
+        "execution_passed": false,
+        "artifact_verified": false
+    }
+}
+
+export fn requirementsFor(request) {
+    let text = to_lower(str(request))
+    let failure_report = contains(text, "failed") || contains(text, "failure") || contains(text, "error")
+    let failure_target = contains(text, "generated") || contains(text, "script") || contains(text, "code") || contains(text, "render") || contains(text, "artifact")
+    let needs_debug = contains(text, "debug") || contains(text, "fix") || contains(text, "patch") || (failure_report && failure_target)
+    let needs_mutation = needs_debug || contains(text, "update") || contains(text, "edit") || contains(text, "change") || contains(text, "write to") || contains(text, "create file")
+    let needs_execution = needs_debug || contains(text, "run") || contains(text, "execute") || contains(text, "test") || contains(text, "render")
+    let artifact_target = contains(text, "pixel art") || contains(text, "pixel-art") || contains(text, "svg") || contains(text, "image")
+    let artifact_action = contains(text, "create") || contains(text, "generate") || contains(text, "draw") || contains(text, "render") || needs_debug
+    let needs_artifact = artifact_target && artifact_action
+
+    return {
+        "target_located": needs_debug || needs_mutation,
+        "source_inspected": needs_debug || needs_mutation,
+        "error_reproduced": needs_debug,
+        "patch_written": needs_mutation,
+        "execution_passed": needs_execution || needs_artifact,
+        "artifact_verified": needs_artifact
+    }
+}
+
+export fn observe(ledger, tool_name, observation) {
+    let failed = observation_failed(observation)
+    let text = to_lower(str(observation))
+
+    if (tool_name == "list" || tool_name == "textSearch") && !failed {
+        ledger["target_located"] = true
+    }
+    if tool_name == "read" && !failed {
+        ledger["target_located"] = true
+        ledger["source_inspected"] = true
+    }
+    if is_mutation(tool_name) && !failed {
+        ledger["target_located"] = true
+        ledger["patch_written"] = true
+    }
+    if is_execution(tool_name) {
+        ledger["target_located"] = true
+        if failed {
+            ledger["error_reproduced"] = true
+        } else {
+            ledger["execution_passed"] = true
+        }
+    }
+    if is_artifact_tool(tool_name) {
+        ledger["target_located"] = true
+        if !failed && contains(text, "artifact_verified=true") {
+            ledger["patch_written"] = true
+            ledger["execution_passed"] = true
+            ledger["artifact_verified"] = true
+        }
+    }
+    return ledger
+}
+
+export fn missingStages(ledger, requirements) {
+    let missing = []
+    for stage in keys(requirements) {
+        if requirements[stage] && !ledger[stage] {
+            push(missing, stage)
+        }
+    }
+    return missing
+}
+
+export fn stageSummary(ledger) -> string {
+    let completed = []
+    for stage in keys(ledger) {
+        if ledger[stage] { push(completed, stage) }
+    }
+    if len(completed) == 0 { return "No tool-backed task stages are complete." }
+    return "Tool-backed stages completed: " + join(completed, ", ") + "."
+}
+
+export fn guardFinal(answer, ledger, requirements) -> string {
+    let response = str(answer)
+    let text = to_lower(response)
+    let unsupported = []
+
+    if contains(text, "i read") && !ledger["source_inspected"] {
+        push(unsupported, "\"I read\" requires a successful read")
+    }
+    if contains(text, "i updated") && !ledger["patch_written"] {
+        push(unsupported, "\"I updated\" requires a successful mutation")
+    }
+    if contains(text, "i ran") && !ledger["execution_passed"] {
+        push(unsupported, "\"I ran\" requires a successful execution")
+    }
+    if contains(text, "it rendered") && (!ledger["execution_passed"] || !ledger["artifact_verified"]) {
+        push(unsupported, "\"It rendered\" requires execution and artifact verification")
+    }
+    if contains(text, "it saved to") && !ledger["artifact_verified"] {
+        push(unsupported, "\"It saved to\" requires a verified output file")
+    }
+
+    let missing = missingStages(ledger, requirements)
+    if len(unsupported) == 0 && len(missing) == 0 { return response }
+
+    let guarded = stageSummary(ledger)
+    if len(unsupported) > 0 {
+        guarded = guarded + " Unsupported completion claim blocked: " + join(unsupported, "; ") + "."
+    }
+    if len(missing) > 0 {
+        guarded = guarded + " Still required: " + join(missing, ", ") + "."
+    }
+    return guarded
+}
+
+export fn shouldBlockMutation(request, ledger, tool_name) -> bool {
+    let requirements = requirementsFor(request)
+    let patch_attempt = is_mutation(tool_name) || tool_name == "writeCode" || tool_name == "debugCode"
+    return requirements["error_reproduced"] && patch_attempt && !ledger["error_reproduced"]
+}
+
+export fn noNewInformation(previous_observation, observation) -> bool {
+    if previous_observation == null { return false }
+    return trim(str(previous_observation)) == trim(str(observation))
+}

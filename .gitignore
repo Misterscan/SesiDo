@@ -4,9 +4,11 @@
 logs
 .artifacts
 *.db
-database/.agent/*.json
+database/.agent/*-brain-summary.json
+SesiDo/database/.agent/*-brain-summary.json
 .trash
 temp.sesi
 index.html
-SesiDo/database/.agent/default-brain-summary.json
+SesiDo/database/.agent/*-memory-block.md
 helpers/version-bump.sesi
+database/.agent/*-memory-block.md
