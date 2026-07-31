@@ -1,2 +1,29 @@
 // SesiDo SVG Generation Tool
-allow "../../build/index" in with SesiDo; set_alias("SesiDo-Pro", "gemini-3.1-pro-preview"); set_alias("SesiDo-Lite", "gemini-3.1-flash-lite"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [SVG] "; SesiDo.createSVG(args); print "[SVG CREATED]"
+allow "../../build/index" in with SesiDo; set_alias("SesiDo-Flash", "gemini-3-flash-preview"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [SVG] "; SesiDo.createSVG(args); print "[SVG CREATED]"
+
+/*
+
+    Description:
+        Generates an SVG image using Sesi's native SVG generation tool.
+
+    Args:
+        args: An object with the following key:
+            prompt: (string, required) The user's natural-language request for an SVG image.
+
+    Quality Guidelines:
+        - Maintain a consistent SVG aesthetic (e.g., vector graphics, scalable).
+        - Uses SVG format.
+        - Ensure the output is suitable for use as a web asset.
+        - Avoid generating overly complex images that may exceed the model's
+          capabilities.
+
+    Output:
+        - Generates an SVG image.
+        - Saves the image to the artifacts directory.
+        - Returns a message indicating the location of the generated image.
+
+Examples:
+        - npm run gen:svg "a castle with a dragon flying over it"
+        - npm run gen:svg "a ninja fighting a samurai"
+
+*/

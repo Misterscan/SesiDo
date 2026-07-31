@@ -10,6 +10,7 @@
     "summarize": "sesi --cli -l agent/ops/summarize.sesi",
     "debug": "sesi --cli -l agent/ops/debug.sesi",
     "gen:code": "sesi --cli -l agent/generate/coder.sesi",
+    "draw:image": "sesi --cli -l agent/draw/image.sesi",
     "gen:image": "sesi --cli -l agent/generate/image.sesi",
     "gen:pixel": "sesi --cli -l agent/generate/pixel-art.sesi",
     "gen:svg": "sesi --cli -l agent/generate/svg.sesi",

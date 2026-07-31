@@ -1,2 +1,33 @@
 // SesiDo Summarize Tool
-allow "../../build/index" in with SesiDo; set_alias("SesiDo-Lite", "gemini-3.1-flash-lite"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [SUMMARIZE]"; SesiDo.summarize(args); print "[SUMMARIZE ENDED]"
+allow "../../build/index" in with SesiDo; set_alias("SesiDo-Lite", "gemini-3.1-flash-lite"); set_alias("SesiDo-Lite-Power", "gemini-3.5-flash-lite") ; let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [SUMMARIZE]"; SesiDo.summarize(args); print "[SUMMARIZE ENDED]"
+
+/*
+
+    Description:
+        Summarizes a given text or document using Sesi's native summarization tool.
+
+    Args:
+        args: An object with the following key:
+            text: (string, required) The text to summarize.
+            file: (string, optional) The path to the file to summarize.
+
+    Quality Guidelines:
+        - Maintain a consistent summarization style (e.g., concise, factual).
+        - Capture the main points of the text.
+        - Ensure the summary is easy to understand.
+        - Avoid generating overly long or detailed summaries.
+        - Maintain a consistent summarization style (e.g., concise, factual).
+        - Capture the main points of the text.
+        - Ensure the summary is easy to understand.
+        - Avoid generating overly long or detailed summaries.
+
+    Output:
+        - Generates a summary of the given text.
+        - Saves the summary to the artifacts directory.
+        - Returns a message indicating the location of the generated summary.
+
+Examples:
+        - npm run summarize "The quick brown fox jumps over the lazy dog. The dog was sleeping peacefully."
+        - npm run summarize file:///path/to/file.txt
+
+*/

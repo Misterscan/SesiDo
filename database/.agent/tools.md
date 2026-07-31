@@ -124,6 +124,12 @@ These tools form the bedrock of your environmental awareness and manipulation.
 - **Signature**: `fn drawPixelArt(args: object) -> string`
 - **Schema**: `{"description": "string"}`
 
+### `drawImage`
+
+- **Description**: Draw an image directly from a self-contained visual description, rather than generating one with an AI image generator.
+- **Signature**: `fn drawImage(args: object) -> string`
+- **Schema**: `{"description": "string"}`
+
 ---
 
 ## 📜 Architectural Guidelines for Custom Tools

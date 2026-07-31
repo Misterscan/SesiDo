@@ -93,7 +93,29 @@ export fn moveFile(path: str, dest: str) -> bool {
 }
 
 // Get working directory
-let pwd = ""; try {pwd = env("CD")} catch (e) {} if pwd == null || trim(pwd) == "" {try {pwd = env("PWD")} catch (e) {}}
-// Extract the root directory from the working directory
-if contains(pwd, "/") {let parts = split(pwd, "/"); if len(parts) > 0 {pwd = "./../" + parts[len(parts) - 1] + "/"}}
-export let wsRoot = trim(pwd)
+let currentOS = trim(js("console.log(require('os').platform())"))
+let pwd = ""
+
+if currentOS == "linux" || currentOS == "darwin" {
+  try {pwd = env("PWD")} catch (e) {}
+  if contains(pwd, "/") {
+    let parts = split(pwd, "/")
+    if len(parts) > 0 {// Extract the root directory from the working directory
+      pwd = "./../" + parts[len(parts) - 1]
+    }
+  }
+  pwd = trim(pwd)
+}
+
+if currentOS == "win32" {
+  try {pwd = exec("cd")} catch (e) {}
+  if contains(pwd, "\\") {
+    let parts = split(pwd, "\\")
+    if len(parts) > 0 {
+      pwd = "./../" + pop(parts)
+    }
+  }
+  pwd = trim(pwd) + "/" // Normalize the working directory for Windows
+}
+
+export let wsRoot = pwd

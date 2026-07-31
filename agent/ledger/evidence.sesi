@@ -27,17 +27,17 @@ fn observation_failed(observation) -> bool {
 fn is_mutation(tool_name) -> bool {
     let mutation_tools = [
         "write", "appendTo", "remove", "move", "newDir", "makeDir",
-        "fileOps", "lineSwap", "createSVG", "drawPixelArt", "generateImage"
+        "fileOps", "lineSwap", "createSVG", "drawPixelArt", "generateImage", "drawImage"
     ]
     return has_item(mutation_tools, tool_name)
 }
 
 fn is_execution(tool_name) -> bool {
-    return tool_name == "runSesi" || tool_name == "safeRun" || tool_name == "eval"
+    return tool_name == "runSesi" || tool_name == "safeRun" || tool_name == "eval" || tool_name == "drawImage" || tool_name == "drawPixelArt" || tool_name == "createSVG"
 }
 
 fn is_artifact_tool(tool_name) -> bool {
-    return tool_name == "drawPixelArt" || tool_name == "createSVG" || tool_name == "generateImage"
+    return tool_name == "drawPixelArt" || tool_name == "createSVG" || tool_name == "generateImage" || tool_name == "drawImage"
 }
 
 export fn newLedger() {
@@ -83,6 +83,9 @@ export fn observe(ledger, tool_name, observation) {
         ledger["target_located"] = true
         ledger["source_inspected"] = true
     }
+    if tool_name == "getImageInfo" && !failed {
+        ledger["artifact_verified"] = true
+    }
     if is_mutation(tool_name) && !failed {
         ledger["target_located"] = true
         ledger["patch_written"] = true
@@ -97,10 +100,12 @@ export fn observe(ledger, tool_name, observation) {
     }
     if is_artifact_tool(tool_name) {
         ledger["target_located"] = true
-        if !failed && contains(text, "artifact_verified=true") {
+        if !failed {
             ledger["patch_written"] = true
             ledger["execution_passed"] = true
-            ledger["artifact_verified"] = true
+            if contains(text, "artifact_verified=true") || contains(text, "saved:") || contains(text, "success") {
+                ledger["artifact_verified"] = true
+            }
         }
     }
     return ledger

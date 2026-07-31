@@ -47,6 +47,10 @@ export let universalTime = universalTime()
 export let formattedTime = formattedTime()
 
 // System instructions, tools, and persona
+let hasGPT = false
+if !is_null(env("OPENAI_API_KEY")) {
+    hasGPT = true
+}
 let instructions = Persona.getSystemInstruction()
 let toolsMD = Persona.getToolsMD()
 let agentBasicsMD = Persona.getAgentBasicsMD()
@@ -54,8 +58,8 @@ let agentOptionalMD = Persona.getAgentOptionalMD()
 let agentOtherMD = Persona.getAgentOtherMD()
 let agentTools = Persona.getAgentTools()
 
-export let sesiDoModels = ["SesiDo", "SesiDo-Heavy", "SesiDo-Pro", "SesiDo-Lite", "SesiDo-Lite-Power", "SesiDo-Flash", "SesiDo-Image", "SesiDo-Image-Lite"]
-export let ogNames = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image"]
+export let sesiDoModels = ["SesiDo", "SesiDo-Heavy", "SesiDo-Pro", "SesiDo-Lite", "SesiDo-Lite-Power", "SesiDo-Flash", "SesiDo-Image", "SesiDo-Image-Lite", "SesiDo-GPT", "SesiDo-GPT-Pro", "SesiDo-GPT-Lite", "SesiDo-GPT-Image"]
+export let ogNames = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-image-2"]
 
 export fn setModel(alias: str, model_name: str) {
     if alias != null {
@@ -69,6 +73,10 @@ export fn setModel(alias: str, model_name: str) {
         set_alias(sesiDoModels[5], ogNames[5])
         set_alias(sesiDoModels[6], ogNames[6])
         set_alias(sesiDoModels[7], ogNames[7])
+        set_alias(sesiDoModels[8], ogNames[8])
+        set_alias(sesiDoModels[9], ogNames[9])
+        set_alias(sesiDoModels[10], ogNames[10])
+        set_alias(sesiDoModels[11], ogNames[11])
     }
 }
 
@@ -215,7 +223,23 @@ fn sanitize(name) {
 
 // Sesi Built-in Functions Reworked For SesiDo Agent Access
 
-fn makeDir(args){let path=null; if type(args)=="object"{path=args["path"]}else{path=args}if path==null{return "Error: makeDir requires a path."}try{Safe.makeDir(path); return "Success: Directory created: "+path}catch(e){return "Error creating directory:"+str(e)}}
+fn makeDir(args) {
+    let path = null
+    if type(args) == "object" {
+        path = args["path"]
+    } else {
+        path = args 
+    } 
+    if path == null {
+        return "Error: makeDir requires a path."
+    }
+    try {
+        Safe.makeDir(path)
+        return "Success: Directory created: " + path
+    } catch (e) {
+        return "Error creating directory:" + str(e)
+    }
+}
 
 fn read(args) {
     let path = null
@@ -290,7 +314,34 @@ fn remove(args) {
     }
 }
 
-fn move(args){let path=null; let dest=null; if type(args)=="object"{path=args["path"]; dest=args["destination"]}else if type(args)=="array"{path=args[0]; dest=args[1]}else{path=args}if path==null||dest==null{return "Error: move requires a source and destination."}let userInput=input("SesiDo Agent is trying to move "+path+" to "+dest+". Is this okay?: (y/n) "); if to_lower(trim(userInput))!="y"{return "Error: User rejected move request."}if to_lower(trim(userInput))=="y"{try{Safe.move(path, dest); return "Success: Moved "+path+" to "+dest}catch(e){return "Error moving file:"+str(e)}}}
+fn move(args) {
+    let path = null
+    let dest = null
+    if type(args) == "object" {
+        path = args["path"]
+        dest = args["destination"]
+    } else if type(args) == "array" {
+        path = args[0]
+        dest = args[1]
+    } else {
+        path = args
+    }
+    if path == null || dest == null {
+        return "Error: move requires a source and destination."
+    }
+    let userInput = input("SesiDo Agent is trying to move "+path+" to "+dest+". Is this okay?: (y/n) ")
+    if to_lower(trim(userInput)) != "y" {
+        return "Error: User rejected move request."
+    }
+    if to_lower(trim(userInput)) == "y" {
+        try{
+            Safe.move(path, dest) 
+            return "Success: Moved "+path+" to "+dest
+        } catch (e) {
+            return "Error moving file: "+str(e)
+        }
+    }
+}
 
 fn list(args) {
     let path = "."
@@ -657,37 +708,131 @@ Request to draw: " preCode}
         let cmd = filename
         try {
             sesi(cmd, true)
-            print "[SesiDo]: Created and rendered SVG for" query "and saved to" svgDir "!"
+            let successMsg = "Success: Created and rendered SVG for " + query + " and saved to " + svgDir + "\nartifact_verified=true"
+            print "[SesiDo]:" successMsg
+            return svgResponse + "\n\n" + successMsg
         } catch (e) {
             print "[SesiDo]: ⚠ Error rendering SVG:" str(e)
+            return "Error rendering SVG: " + str(e)
         }
     }
     print "[SesiDo]: Saved SVG sesi code for" query " to" codeDir "!"
     return svgResponse
 }
 
-export fn drawPixelArt(args){
-    let query=null;
-    if type(args)=="object"{
-        if args["query"]!=null{query=args["query"]
-        }else if args["description"]!=null{query=args["description"]}
-    }else{query=args}
-    if query==null||query==""{return "Error: drawPixelArt requires a description."}
-    print "[SesiDo]: Creating pixel art for:" query;
-    let png_output_path=imageDir+sanitize(query)+"-"+formattedTime+"-pixel-art.png";
-    let pixelArtResponse=false;
-    pixelArtResponse=model("SesiDo-Lite-Power"){brain}{"You are a Sesi programming language code generator.\nWrite a Sesi script using the 'std/draw' module to draw pixel art based on the following description. Use a grid of squares to represent pixels, and choose colors that match the description. The Sesi drawing API is:\n\n allow \"std/draw\" in with Draw\nDraw.clear()\n- Draw.pixel(x, y, color)\n- Draw.pixel_grid(grid, palette, scale = 1, x = 0, y = 0)\n- Draw.save_png(path, width, height, background = \"transparent\")\n -- \nsave output.\nRules:\n1. Always allow \"std/draw\" in with Draw at the beginning.\n2. Sesi range loops use 'for x = 0 to 31' syntax. Never write 'for x from ...' or 'for x in range(...)'.\n3. Sesi does not use let or var or function definitions inside drawing statements unless defining variables at the top. Just call Draw functions.\n4. Make sure to call Draw.save_png() at the end.\n5. Output ONLY the Sesi script code inside a ```sesi code block. Do not write any explanations before or after.\nOutput path to use: "png_output_path"\nRequest to draw: " query}
-    pixelArtResponse=split(pixelArtResponse, "```sesi")[1];
-    pixelArtResponse=split(pixelArtResponse, "```")[0];
-    let filename=codeDir+sanitize(query)+"-"+formattedTime+"-pixel-art.sesi";
-    Safe.writeFile(filename, pixelArtResponse);
-    if pixelArtResponse != "" {
-        let cmd=filename;
-        try{sesi(cmd, true); print "[SesiDo]: Created and rendered pixel art for" query "and saved to" imageDir "!"}
-        catch(e){print "[SesiDo]: ⚠ Error rendering pixel art:" str(e)}
+export fn drawPixelArt(args) {
+    let query = null
+
+    if type(args) == "object" {
+        if args["query"] != null {
+            query = args["query"]
+        } else if args["description"] != null {
+            query = args["description"] 
+        }
+    } else {
+        query = args
     }
-    print "[SesiDo]: Saved pixel art sesi code for" query " to" codeDir "!";
+    if query == null || query == "" {
+        return "Error: drawPixelArt requires a description."
+    }
+
+    print "[SesiDo]: Creating pixel art for:" query
+
+    let png_output_path = imageDir + sanitize(query) +"-"+ formattedTime +"-pixel-art.png"
+    let pixelArtResponse = false
+    pixelArtResponse = model("SesiDo-Lite-Power") {brain "You are a Sesi programming language code generator.
+    Write a Sesi script using the 'std/draw' module to draw pixel art based on the following description. Use a grid of squares to represent pixels, and choose colors that match the description. 
+    The Sesi drawing API is:
+    
+    allow \"std/draw\" in with Draw
+    Draw.clear()\n- Draw.pixel(x, y, color)
+    - Draw.pixel_grid(grid, palette, scale = 1, x = 0, y = 0)
+    - Draw.save_png(path, width, height, background = \"transparent\")
+    -- 
+    save output.
+    Rules:
+    1. Always allow \"std/draw\" in with Draw at the beginning.
+    2. Sesi range loops use 'for x = 0 to 31' syntax. Never write 'for x from ...' or 'for x in range(...)'.
+    3. Sesi does not use let or var or function definitions inside drawing statements unless defining variables at the top. Just call Draw functions.
+    4. Make sure to call Draw.save_png() at the end.
+    5. Output ONLY the Sesi script code inside a ```sesi code block. Do not write any explanations before or after.
+    Output path to use: "png_output_path"
+    Request to draw: " query}
+    pixelArtResponse = split(pixelArtResponse, "```sesi")[1]
+    pixelArtResponse = split(pixelArtResponse, "```")[0]
+    let filename = codeDir + sanitize(query) +"-"+ formattedTime +"-pixel-art.sesi"
+    Safe.writeFile(filename, pixelArtResponse)
+    if pixelArtResponse != "" {
+        let cmd = filename
+        try {
+            sesi(cmd, true)
+            let successMsg = "Success: Created and rendered pixel art for " + query + " and saved to " + imageDir + "\nartifact_verified=true"
+            print "[SesiDo]:" successMsg
+            return pixelArtResponse + "\n\n" + successMsg
+        } catch(e) {
+            print "[SesiDo]: ⚠ Error rendering pixel art:" str(e)
+            return "Error rendering pixel art: " + str(e)
+        }
+    }
+    print "[SesiDo]: Saved pixel art sesi code for" query " to" codeDir "!"
     return pixelArtResponse
+}
+
+export fn drawImage(args) {
+    let query = null
+    if type(args) == "object" {
+        if args["query"] != null { query = args["query"] 
+        } else if args["description"] != null { query = args["description"] }
+    } else {
+        query = args
+    }
+    if query == null || query == "" {
+        return "Error: drawImage requires a description."
+    }
+
+    let cmd = ""
+    let refs = []
+    let pngResponse = false
+    let example = Safe.readFile("examples/main/pixel_placeholder_icon_detailed.sesi")
+    let docs = Safe.readFile("getting-started/VARIABLES.md")
+    docs = docs +"\n"+ Safe.readFile("getting-started/FUNCTIONS.md")
+    push(refs, example)
+    push(refs, docs)
+    refs = to_json(refs)
+
+    try {
+        print "[SesiDo]: Drawing image for:" query
+        prompt sys {"Create a PNG image with a Sesi script based on the following references: "refs}
+        prompt filename {codeDir + sanitize(query) + "-" + formattedTime + "-image"}
+        if !is_null(env("OPENAI_API_KEY")) {
+            pngResponse = model("SesiDo-GPT-Lite") {thinking: "medium", system: sys, cache: true} {"User Prompt: "query"\nFilename to save as: "filename"\nUse the output directory "imageDir}
+        } else {
+            pngResponse = model("SesiDo-Flash") {thinking: "medium", system: sys, cache: true} {"User Prompt: "query"\nFilename to save as: "filename"\nUse the output directory "imageDir}
+        }
+        if pngResponse != "" {
+            if contains(pngResponse, "/*") {
+                pngResponse = "/*" + split(pngResponse, "/*")[1]
+            }
+            pngResponse = swap(pngResponse, "```sesi", "")
+            pngResponse = trim(split(pngResponse, "```", "")[0])
+            filename = filename + ".sesi"
+            Safe.writeFile(filename, pngResponse)
+        }
+        try {
+            cmd = sesi(filename)
+            filename = swap(filename, codeDir, imageDir)
+            filename = swap(filename, ".sesi", ".png")
+            let successMsg = "Success: Drawn image for " + query + " and saved to " + imageDir + "\nartifact_verified=true"
+            print "[SesiDo]:" successMsg
+            return pngResponse + "\n\n" + successMsg
+        } catch (e) {
+            print "[SesiDo]: ⚠ Error rendering image:" str(e)
+            return "Error rendering image: " + str(e)
+        }
+    } catch (e) {
+        print "[SesiDo]: ⚠ Error generating image:" str(e)
+        return "Error generating image: " + str(e)
+    }
 }
 
 export fn generateImage(args) {
@@ -703,13 +848,20 @@ export fn generateImage(args) {
     }
     print "[SesiDo]: Generating image for:" query
     let preImage = model("SesiDo-Lite") {lowThink, mediumTemp} {brain "
-    Enhance this image request with verbosity and details: " query}
-    let imageResponse = image("SesiDo-Image") {square, mediumTemp} {brain "
+    
+Enhance this image request with verbosity and details: " query}
+    let imageResponse = ""
+    if hasGPT {
+        imageResponse = image("SesiDo-GPT-Image") {square, mediumTemp} {brain "\nGenerate image for the following request: " preImage}
+    } else {
+        imageResponse = image("SesiDo-Image") {square, mediumTemp} {brain "
     Generate image for the following request:" preImage}
+    }
     let filename = imageDir + sanitize(query) + "-" + formattedTime + "-image.png"
     Safe.writeImage(filename, imageResponse)
-    print "[SesiDo]: Generated image for" query "and saved to" imageDir "!"
-    return "Image generated and saved to: " + filename
+    let msg = "Success: Generated image for " + query + " and saved to " + imageDir + "\nartifact_verified=true"
+    print "[SesiDo]:" msg
+    return msg
 }
 
 export fn getImageInfo(args) {
@@ -1090,6 +1242,7 @@ export fn localTools() {
     register_tool("createSVG", createSVG, "Generates SVG. Args: {description: string}")
     register_tool("generateImage", generateImage, "Generates image. Args: {query: string}")
     register_tool("drawPixelArt", drawPixelArt, "Generates pixel art / avatars / pixel-art visuals. Args: {description: string}")
+    register_tool("drawImage", drawImage, "Draws an image without calling an image generator. Args: {description: string}")
     register_tool("getImageInfo", getImageInfo, "Analyzes image. Args: {path: string}")
     register_tool("browsePage", browsePage, "Browse and access web pages. Args: {url: string, operation?: string}. Operations: fetch (summarize page), scrape (extract raw text), research (query content), analyze (structure analysis), screenshot (full page capture)")
     register_tool("createSession", createSession, "Creates a new chat session with the specified ID or name. Args: {id: string}")
@@ -1150,6 +1303,7 @@ fn chat() {
     tool_map["createSVG"] = createSVG
     tool_map["generateImage"] = generateImage
     tool_map["drawPixelArt"] = drawPixelArt
+    tool_map["drawImage"] = drawImage
     tool_map["getImageInfo"] = getImageInfo
     tool_map["browsePage"] = browsePage
     tool_map["createSession"] = createSession
@@ -1419,4 +1573,3 @@ export fn main() {
     chat()
     print "[CHAT ENDED]"
 }
-main()

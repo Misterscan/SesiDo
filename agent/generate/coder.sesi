@@ -1,2 +1,53 @@
 // SesiDo Coder Tool
-allow "../../build/index" in with SesiDo; set_alias("SesiDo-Pro", "gemini-3.1-pro-preview"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [CODER]"; SesiDo.writeCode(args); print "[CODER FINISHED]"
+allow "../../build/index" in with SesiDo; set_alias("SesiDo-Pro", "gemini-3.1-pro-preview"); set_alias("SesiDo-Flash", "gemini-3-flash-preview"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [CODER]"; SesiDo.writeCode(args); print "[CODER FINISHED]"
+
+/*
+
+    To use:
+
+        npm run gen:code "a photo of a cat"
+
+    SesiDo will spawn a child Sesi interpreter, set the appropriate aliases, print logging tags, and then invoke this script.
+
+    Args:
+
+        args: An object with the following key:
+
+            prompt: (string, required) The user's natural-language request for code.
+
+    Output:
+
+        This script will write the artifact to SesiDo/.artifacts/code and return the artifact path if successful.
+
+    Supported Models & Quality:
+
+        - Primary Model: gemini-3.1-pro-preview (alias: SesiDo-Pro)
+        - Secondary Model: gemini-3-flash-preview (alias: SesiDo-Flash)
+        - Optimized For: Python, HTML/CSS/JS, Bash, JSON, Sesi configuration
+        - Quality: Production-ready, well-commented, lint-safe code
+
+    Artifact Location:
+
+        The script will save the generated code to:
+
+            ./SesiDo/.artifacts/code/{prompt}-{timestamp}.md
+
+        where {timestamp} is the UTC ISO8601 timestamp when the code was
+        generated. The artifact_path will include this full path.
+
+    Safety & Environment:
+
+        - This script runs in an isolated Sesi sandbox.
+        - It does not have write access to system directories.
+        - All file operations are restricted to the ./SesiDo/.artifacts/code/
+          directory.
+        - The environment is read-only except for artifact creation.
+
+    Dependencies:
+
+        allow "../../build/index" in with SesiDo;
+
+        The agent must not attempt to write to arbitrary paths. This script
+        strictly controls output to ./SesiDo/.artifacts/code/ to prevent system
+        contamination.
+*/

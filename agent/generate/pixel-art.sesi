@@ -1,2 +1,27 @@
 // SesiDo Pixel Art Generation Tool
-allow "../../build/index" in with SesiDo; set_alias("SesiDo-Lite-Power", "gemini-3.5-flash-lite"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [PIXEL ART] "; SesiDo.drawPixelArt(args); print "[PIXEL ART FINISHED]"
+allow "../../build/index" in with SesiDo; set_alias("SesiDo-Flash", "gemini-3-flash-preview"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [PIXEL ART] "; SesiDo.drawPixelArt(args); print "[PIXEL ART FINISHED]"
+
+/*
+  Description:
+        Generates a pixel art grid rendering using Sesi's native pixel-art tool.
+
+    Args:
+        args: An object with the following key:
+            prompt: (string, required) The user's natural-language request for a pixel-art image.
+
+    Quality Guidelines:
+        - Maintain a consistent pixel-art aesthetic (e.g., 16-bit style, retro game
+          graphics).
+        - Uses PNG format.
+        - Ensure the output is suitable for use as a game asset.
+
+    Output:
+        - Generates a pixel art grid rendering.
+        - Saves the image to the artifacts directory.
+        - Returns a message indicating the location of the generated image.
+
+Examples:
+        - npm run gen:pixel-art "a castle with a dragon flying over it"
+        - npm run gen:pixel-art "a ninja fighting a samurai"
+
+*/
