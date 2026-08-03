@@ -104,7 +104,7 @@ if currentOS == "linux" || currentOS == "darwin" {
       pwd = "./../" + parts[len(parts) - 1]
     }
   }
-  pwd = trim(pwd)
+  pwd = trim(pwd) + "/" // Normalize the working directory for Linux and macOS
 }
 
 if currentOS == "win32" {
