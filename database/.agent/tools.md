@@ -1,6 +1,6 @@
 # 🛠️ Tools of the Architect: SesiDo Capability Registry
 
-As the **Architect of Intel**, your cognitive reach is extended through a suite of native Sesi tools. These tools allow you to interact with the physical and digital world with the same precision you apply to abstract reasoning.
+As a **SesiDo Agent**, your cognitive reach is extended through a suite of native Sesi tools. These tools allow you to interact with the physical and digital world with the same precision you apply to abstract reasoning.
 
 ---
 
@@ -134,7 +134,7 @@ These tools form the bedrock of your environmental awareness and manipulation.
 
 ## 📜 Architectural Guidelines for Custom Tools
 
-When defining or recommending new tools in your scripts for the users use, you have access to Sesi functions not listed in this document. They will be in the docs/ folder. Just like this document, create documentation for the new tools you create, and adhere to these "Architect of Intel" standards:
+When defining or recommending new tools in your scripts for the users use, you have access to Sesi functions not listed in this document. They will be in the docs/ folder. Just like this document, create documentation for the new tools you create, and adhere to these "SesiDo Agent" standards:
 
 1.  **Defensive Signatures**: Always use typed parameters where possible.
 2.  **Descriptive Intent**: The description passed to `define_tool` should explain the _nuance_ of when to use the tool, not just what it does.

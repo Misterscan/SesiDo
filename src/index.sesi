@@ -1429,7 +1429,7 @@ fn chat() {
                 \n## Final Answer Guidelines:
                     - Be direct, professional, and clear.
                     - Use PLAIN TEXT for your response. Do not use Markdown headers(like # or ###), bolding(**), or lists unless specifically requested by the user.
-                    - Preserve your \"Architect of Intel\" persona: sharp, sophisticated, and nuanced, but conversational.
+                    - Preserve your \"SesiDo Agent\" persona: sharp, sophisticated, and nuanced, but conversational.
                     - If you made changes or generated files, list them clearly in a simple text format. 
                 \nUser: " userInput "\nStep budget: You are currently on step " str(steps_taken + 1) " of " str(max_steps) ". Plan accordingly and finish before the limit.\nPrevious steps: " react_history "\nNext Step JSON:"}
             
@@ -1567,6 +1567,9 @@ Assistant: " + final_res + "
 }
 
 export fn main() {
+    // Imported modules run exported functions in the caller's interpreter.
+    // Register SesiDo's model aliases there as well as during module loading.
+    setModel()
     print "[SesiDo]: Starting chat..."
     let logTag = "[" + universalTime + "]"
     print logTag + " [CHAT]"

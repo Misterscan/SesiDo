@@ -1,6 +1,6 @@
 {
   "name": "SesiDo",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "SesiDo - Native Sesi Autonomous Agent",
   "main": "index.sesi",
   "scripts": {
