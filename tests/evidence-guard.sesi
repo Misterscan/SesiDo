@@ -21,6 +21,20 @@ let read_evidence = Evidence.observe(Evidence.newLedger(), "read", "Success: Rea
 let allowed_read = Evidence.guardFinal("I read the file.", read_evidence, no_requirements)
 check(allowed_read == "I read the file.", "successful read permits read claim")
 
+let content_with_failure_words = Evidence.observe(Evidence.newLedger(), "read", "The previous build failed, but this is valid file content.", {"path": "notes.md"})
+check(content_with_failure_words["source_inspected"], "failure words inside file content do not invalidate a successful read")
+
+let custom_artifact = Evidence.observe(Evidence.newLedger(), "write", "Success: Wrote to output.custom-bundle", {"path": "output.custom-bundle"})
+custom_artifact = Evidence.observe(custom_artifact, "read", "custom artifact bytes", {"path": "output.custom-bundle"})
+check(custom_artifact["artifact_verified"], "successful read verifies a previously written artifact of any type")
+
+let source_only = Evidence.observe(Evidence.newLedger(), "read", "Draw.save_svg(\"output.svg\", 10, 10)", {"path": "source.sesi"})
+check(!source_only["artifact_verified"], "artifact names inside source content do not verify an artifact")
+
+let unrelated_read = Evidence.observe(Evidence.newLedger(), "write", "Success: Wrote to expected.data", {"path": "expected.data"})
+unrelated_read = Evidence.observe(unrelated_read, "read", "unrelated", {"path": "unrelated.data"})
+check(!unrelated_read["artifact_verified"], "reading an unrelated path does not verify the expected artifact")
+
 let failed_run = Evidence.observe(Evidence.newLedger(), "runSesi", "Execution error: bad token")
 check(failed_run["error_reproduced"], "failed execution records reproduced error")
 check(!failed_run["execution_passed"], "failed execution does not record a pass")
@@ -31,6 +45,36 @@ check(successful_run["execution_passed"], "successful rerun records execution pa
 let artifact = Evidence.observe(Evidence.newLedger(), "drawPixelArt", "Success: artifact_verified=true; output=x.png")
 check(artifact["artifact_verified"], "verified generator observation records artifact")
 
+let svg_requirements = Evidence.requirementsFor("generate an svg")
+let svg_ledger = Evidence.observe(Evidence.newLedger(), "write", "Success: Wrote to example.sesi", {"path": "example.sesi"}, svg_requirements)
+svg_ledger = Evidence.observe(svg_ledger, "read", "Draw.save_svg(\"output.svg\", 10, 10)", {"path": "example.sesi"}, svg_requirements)
+check(len(svg_ledger["artifacts"]) == 1 && svg_ledger["artifacts"][0]["verified"], "reading generated source verifies only the Sesi artifact")
+svg_ledger = Evidence.observe(svg_ledger, "runSesi", "Success: runSesi executed example.sesi.", {"path": "example.sesi"}, svg_requirements)
+check(!svg_ledger["artifact_verified"], "successful execution adds an unverified output record")
+svg_ledger = Evidence.observe(svg_ledger, "read", "<svg></svg>", {"path": "output.svg"}, svg_requirements)
+check(Evidence.guardFinal("Done.", svg_ledger, svg_requirements) == "Done.", "run plus artifact read satisfies generated SVG requirements")
+check(len(svg_ledger["artifacts"]) == 2, "source script and generated SVG are tracked separately")
+
+let multi_requirements = Evidence.requirementsFor("write a Sesi script and create an HTML page")
+let multi_artifact = Evidence.observe(Evidence.newLedger(), "write", "Success: Wrote to app.sesi", {"path": "app.sesi"}, multi_requirements)
+multi_artifact = Evidence.observe(multi_artifact, "write", "Success: Wrote to index.html", {"path": "index.html"}, multi_requirements)
+multi_artifact = Evidence.observe(multi_artifact, "read", "print 1", {"path": "app.sesi"}, multi_requirements)
+check(!multi_artifact["artifact_verified"], "verifying one of two artifacts does not complete the ledger")
+multi_artifact = Evidence.observe(multi_artifact, "read", "<html></html>", {"path": "index.html"}, multi_requirements)
+check(multi_artifact["artifact_verified"], "all individually tracked artifacts must be verified")
+
+let declared_outputs = Evidence.observe(Evidence.newLedger(), "runSesi", "Success: runSesi executed builder.sesi.", {"path": "builder.sesi", "outputs": ["one.html", "two.data"]}, svg_requirements)
+declared_outputs = Evidence.observe(declared_outputs, "read", "<html></html>", {"path": "one.html"}, svg_requirements)
+check(!declared_outputs["artifact_verified"], "one verified execution output cannot cover another expected output")
+declared_outputs = Evidence.observe(declared_outputs, "read", "data", {"path": "two.data"}, svg_requirements)
+check(declared_outputs["artifact_verified"], "every declared execution output is verified independently")
+
+let unknown_artifact_requirements = Evidence.requirementsFor("run a script that produces a custom bundle")
+let unknown_artifact = Evidence.observe(Evidence.newLedger(), "runSesi", "Success: runSesi executed bundle.sesi.", {"path": "bundle.sesi"}, unknown_artifact_requirements)
+unknown_artifact = Evidence.observe(unknown_artifact, "read", "custom bundle bytes", {"path": "result.unknown-format"}, unknown_artifact_requirements)
+check(unknown_artifact["artifact_verified"], "execution output with an unknown extension can be verified")
+check(Evidence.guardFinal("It saved to result.unknown-format.", unknown_artifact, unknown_artifact_requirements) == "It saved to result.unknown-format.", "verified unknown artifact permits a saved-path claim")
+
 let debug_requirements = Evidence.requirementsFor("fix the failed generated script")
 let incomplete = Evidence.guardFinal("Done.", Evidence.newLedger(), debug_requirements)
 check(contains(incomplete, "Still required"), "full completion is blocked while required stages are false")
@@ -39,6 +83,28 @@ check(!Evidence.shouldBlockMutation("fix the failed generated script", failed_ru
 
 let conversational_requirements = Evidence.requirementsFor("explain what an error message means")
 check(!conversational_requirements["error_reproduced"], "conversational error questions do not require tool execution")
+
+let sesi_requirements = Evidence.requirementsFor("write a Sesi script")
+check(sesi_requirements["patch_written"], "writing a Sesi script requires a successful mutation")
+check(sesi_requirements["artifact_verified"], "a Sesi script is treated as an artifact")
+check(!sesi_requirements["execution_passed"], "a Sesi script is not executed unless execution is requested")
+let sesi_artifact = Evidence.observe(Evidence.newLedger(), "write", "Success: Wrote to tool.sesi", {"path": "tool.sesi"}, sesi_requirements)
+sesi_artifact = Evidence.observe(sesi_artifact, "read", "print 1", {"path": "tool.sesi"}, sesi_requirements)
+check(Evidence.guardFinal("Done.", sesi_artifact, sesi_requirements) == "Done.", "written and read-back Sesi script completes its ledger")
+
+let html_requirements = Evidence.requirementsFor("create an HTML page")
+check(html_requirements["patch_written"], "creating HTML requires a successful mutation")
+check(html_requirements["artifact_verified"], "an HTML page is treated as an artifact")
+check(!html_requirements["execution_passed"], "HTML creation does not require unrelated script execution")
+let html_artifact = Evidence.observe(Evidence.newLedger(), "write", "Success: Wrote to index.html", {"path": "index.html"}, html_requirements)
+html_artifact = Evidence.observe(html_artifact, "read", "<html></html>", {"path": "index.html"}, html_requirements)
+check(Evidence.guardFinal("It saved to index.html.", html_artifact, html_requirements) == "It saved to index.html.", "written and read-back HTML completes its ledger")
+
+let original_request_requirements = Evidence.requirementsFor("using exported functions from math.sesi, write a script that calculates the speed of light, and generates an svg")
+check(original_request_requirements["source_inspected"], "using exported functions requires source inspection")
+check(original_request_requirements["patch_written"], "the original script request requires a successful write")
+check(original_request_requirements["execution_passed"], "the generated SVG requires successful execution")
+check(original_request_requirements["artifact_verified"], "the generated SVG requires output verification")
 
 check(Evidence.noNewInformation("[]", "[]"), "identical null observations count as no new information")
 check(!Evidence.noNewInformation("[]", "[\"file\"]"), "changed observations count as new information")

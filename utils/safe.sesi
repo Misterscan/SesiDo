@@ -99,23 +99,17 @@ let pwd = ""
 if currentOS == "linux" || currentOS == "darwin" {
   try {pwd = env("PWD")} catch (e) {}
   if contains(pwd, "/") {
-    let parts = split(pwd, "/")
-    if len(parts) > 0 {// Extract the root directory from the working directory
-      pwd = "./../" + parts[len(parts) - 1]
-    }
+    pwd = trim(pwd) + "/" // Normalize the working directory for Linux and macOS
   }
-  pwd = trim(pwd) + "/" // Normalize the working directory for Linux and macOS
 }
 
 if currentOS == "win32" {
   try {pwd = exec("cd")} catch (e) {}
-  if contains(pwd, "\\") {
-    let parts = split(pwd, "\\")
-    if len(parts) > 0 {
-      pwd = "./../" + pop(parts)
-    }
+  if includes(pwd, "\\") {
+    let parts = split(pwd, "\n")
+    let finalPath = parts[0]
+    pwd = trim(swap(finalPath, "\\", "/")) + "/" // Normalize the working directory for Windows
   }
-  pwd = trim(pwd) + "/" // Normalize the working directory for Windows
 }
 
 export let wsRoot = pwd

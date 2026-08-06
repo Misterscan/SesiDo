@@ -16,12 +16,38 @@ fn observation_failed(observation) -> bool {
     if observation == null { return true }
     let text = to_lower(trim(str(observation)))
     if text == "" { return true }
-    if contains(text, "error:") { return true }
-    if contains(text, "execution error") { return true }
-    if contains(text, "failed") { return true }
-    if contains(text, "rejected") { return true }
-    if contains(text, "not registered") { return true }
+    if len(text) >= 6 && slice(text, 0, 6) == "error:" { return true }
+    if len(text) >= 16 && slice(text, 0, 16) == "execution error:" { return true }
+    if len(text) >= 7 && slice(text, 0, 7) == "failed " { return true }
+    if len(text) >= 8 && slice(text, 0, 8) == "failure:" { return true }
     return false
+}
+
+fn tool_path(tool_args) -> string {
+    if tool_args == null { return "" }
+    if type(tool_args) != "object" { return str(tool_args) }
+    if tool_args["destination"] != null { return str(tool_args["destination"]) }
+    if tool_args["path"] != null { return str(tool_args["path"]) }
+    if tool_args["image_path"] != null { return str(tool_args["image_path"]) }
+    if tool_args["imagePath"] != null { return str(tool_args["imagePath"]) }
+    if tool_args["image"] != null { return str(tool_args["image"]) }
+    if tool_args["output"] != null { return str(tool_args["output"]) }
+    if tool_args["command"] != null { return str(tool_args["command"]) }
+    if tool_args["cmd"] != null { return str(tool_args["cmd"]) }
+    return ""
+}
+
+fn normalized_path(path) -> string {
+    let value = swap(str(path), "\\", "/")
+    while len(value) >= 2 && slice(value, 0, 2) == "./" {
+        value = slice(value, 2, len(value))
+    }
+    return value
+}
+
+fn same_path(left, right) -> bool {
+    if left == null || right == null || str(left) == "" || str(right) == "" { return false }
+    return normalized_path(left) == normalized_path(right)
 }
 
 fn is_mutation(tool_name) -> bool {
@@ -40,6 +66,106 @@ fn is_artifact_tool(tool_name) -> bool {
     return tool_name == "drawPixelArt" || tool_name == "createSVG" || tool_name == "generateImage" || tool_name == "drawImage"
 }
 
+fn produces_file_path(tool_name) -> bool {
+    return tool_name == "write" || tool_name == "appendTo" || tool_name == "move" || tool_name == "fileOps" || tool_name == "lineSwap"
+}
+
+fn output_paths(tool_args) {
+    let paths = []
+    if tool_args == null || type(tool_args) != "object" { return paths }
+    let outputs = tool_args["outputs"]
+    if outputs != null && type(outputs) == "array" {
+        for output in outputs {
+            if output != null && str(output) != "" { push(paths, str(output)) }
+        }
+    } else if outputs != null && str(outputs) != "" {
+        push(paths, str(outputs))
+    }
+    if len(paths) == 0 && tool_args["output"] != null && str(tool_args["output"]) != "" {
+        push(paths, str(tool_args["output"]))
+    }
+    return paths
+}
+
+fn observation_output_path(observation) -> string {
+    let value = str(observation)
+    if !contains(value, "output=") { return "" }
+    let output = split(value, "output=")[1]
+    if contains(output, ";") { output = split(output, ";")[0] }
+    return trim(output)
+}
+
+fn refresh_artifact_stage(ledger) {
+    let artifacts = ledger["artifacts"]
+    if artifacts == null || type(artifacts) != "array" || len(artifacts) == 0 {
+        ledger["artifact_verified"] = false
+        return
+    }
+    for artifact in artifacts {
+        if !artifact["verified"] {
+            ledger["artifact_verified"] = false
+            return
+        }
+    }
+    ledger["artifact_verified"] = true
+}
+
+fn register_artifact(ledger, path, producer, verified = false) {
+    let artifacts = ledger["artifacts"]
+    if artifacts == null || type(artifacts) != "array" {
+        artifacts = []
+        ledger["artifacts"] = artifacts
+    }
+    let i = 0
+    while i < len(artifacts) {
+        if same_path(artifacts[i]["path"], path) {
+            if verified { artifacts[i]["verified"] = true }
+            if producer != null && str(producer) != "" { artifacts[i]["producer"] = str(producer) }
+            refresh_artifact_stage(ledger)
+            return
+        }
+        i = i + 1
+    }
+    push(artifacts, {"path": str(path), "producer": str(producer), "verified": verified, "verification_tool": ""})
+    refresh_artifact_stage(ledger)
+}
+
+fn register_pending_execution_output(ledger, producer) {
+    let artifacts = ledger["artifacts"]
+    for artifact in artifacts {
+        if artifact["path"] == "" && !artifact["verified"] { return }
+    }
+    push(artifacts, {"path": "", "producer": str(producer), "verified": false, "verification_tool": ""})
+    refresh_artifact_stage(ledger)
+}
+
+fn verify_artifact_path(ledger, path, verification_tool) -> bool {
+    if path == null || str(path) == "" { return false }
+    let artifacts = ledger["artifacts"]
+    let i = 0
+    while i < len(artifacts) {
+        if same_path(artifacts[i]["path"], path) {
+            artifacts[i]["verified"] = true
+            artifacts[i]["verification_tool"] = str(verification_tool)
+            refresh_artifact_stage(ledger)
+            return true
+        }
+        i = i + 1
+    }
+    i = 0
+    while i < len(artifacts) {
+        if artifacts[i]["path"] == "" && !artifacts[i]["verified"] {
+            artifacts[i]["path"] = str(path)
+            artifacts[i]["verified"] = true
+            artifacts[i]["verification_tool"] = str(verification_tool)
+            refresh_artifact_stage(ledger)
+            return true
+        }
+        i = i + 1
+    }
+    return false
+}
+
 export fn newLedger() {
     return {
         "target_located": false,
@@ -47,7 +173,9 @@ export fn newLedger() {
         "error_reproduced": false,
         "patch_written": false,
         "execution_passed": false,
-        "artifact_verified": false
+        "artifact_verified": false,
+        "executed_path": "",
+        "artifacts": []
     }
 }
 
@@ -56,25 +184,33 @@ export fn requirementsFor(request) {
     let failure_report = contains(text, "failed") || contains(text, "failure") || contains(text, "error")
     let failure_target = contains(text, "generated") || contains(text, "script") || contains(text, "code") || contains(text, "render") || contains(text, "artifact")
     let needs_debug = contains(text, "debug") || contains(text, "fix") || contains(text, "patch") || (failure_report && failure_target)
-    let needs_mutation = needs_debug || contains(text, "update") || contains(text, "edit") || contains(text, "change") || contains(text, "write to") || contains(text, "create file")
+    let write_action = contains(text, "write") || contains(text, "create") || contains(text, "generate") || contains(text, "draw") || contains(text, "save") || contains(text, "build") || contains(text, "make")
+    let existing_action = contains(text, "update") || contains(text, "edit") || contains(text, "change") || contains(text, "modify")
+    let file_target = contains(text, "file") || contains(text, "script") || contains(text, "code") || contains(text, "artifact") || contains(text, "page") || contains(text, "site") || contains(text, "document") || contains(text, "sesi") || contains(text, "html") || contains(text, "svg") || contains(text, "image") || contains(text, "pixel art") || contains(text, "pixel-art")
+    let needs_mutation = needs_debug || existing_action || (write_action && file_target)
+    let uses_existing_source = contains(text, "using exported") || contains(text, "using existing") || contains(text, "from the existing") || existing_action
+    let needs_source_inspection = needs_debug || uses_existing_source
     let needs_execution = needs_debug || contains(text, "run") || contains(text, "execute") || contains(text, "test") || contains(text, "render")
-    let artifact_target = contains(text, "pixel art") || contains(text, "pixel-art") || contains(text, "svg") || contains(text, "image")
-    let artifact_action = contains(text, "create") || contains(text, "generate") || contains(text, "draw") || contains(text, "render") || needs_debug
-    let needs_artifact = artifact_target && artifact_action
+    let visual_target = contains(text, "pixel art") || contains(text, "pixel-art") || contains(text, "svg") || contains(text, "image")
+    let artifact_action = write_action || contains(text, "render") || needs_debug
+    let needs_artifact = file_target && artifact_action
+    let needs_render_execution = visual_target && artifact_action
 
     return {
         "target_located": needs_debug || needs_mutation,
-        "source_inspected": needs_debug || needs_mutation,
+        "source_inspected": needs_source_inspection,
         "error_reproduced": needs_debug,
         "patch_written": needs_mutation,
-        "execution_passed": needs_execution || needs_artifact,
+        "execution_passed": needs_execution || needs_render_execution,
         "artifact_verified": needs_artifact
     }
 }
 
-export fn observe(ledger, tool_name, observation) {
+export fn observe(ledger, tool_name, observation, tool_args = null, requirements = null) {
     let failed = observation_failed(observation)
     let text = to_lower(str(observation))
+    let path = tool_path(tool_args)
+    if ledger["artifacts"] == null || type(ledger["artifacts"]) != "array" { ledger["artifacts"] = [] }
 
     if (tool_name == "list" || tool_name == "textSearch") && !failed {
         ledger["target_located"] = true
@@ -82,13 +218,18 @@ export fn observe(ledger, tool_name, observation) {
     if tool_name == "read" && !failed {
         ledger["target_located"] = true
         ledger["source_inspected"] = true
+        let verified = verify_artifact_path(ledger, path, "read")
+        if !verified && ledger["execution_passed"] && ledger["executed_path"] != "" && !same_path(path, ledger["executed_path"]) {
+            register_artifact(ledger, path, ledger["executed_path"], true)
+        }
     }
     if tool_name == "getImageInfo" && !failed {
-        ledger["artifact_verified"] = true
+        verify_artifact_path(ledger, path, "getImageInfo")
     }
     if is_mutation(tool_name) && !failed {
         ledger["target_located"] = true
         ledger["patch_written"] = true
+        if produces_file_path(tool_name) && path != "" { register_artifact(ledger, path, tool_name, false) }
     }
     if is_execution(tool_name) {
         ledger["target_located"] = true
@@ -96,6 +237,15 @@ export fn observe(ledger, tool_name, observation) {
             ledger["error_reproduced"] = true
         } else {
             ledger["execution_passed"] = true
+            if path != "" { ledger["executed_path"] = path }
+            if !is_artifact_tool(tool_name) && requirements != null && requirements["artifact_verified"] && requirements["execution_passed"] {
+                let expected_outputs = output_paths(tool_args)
+                if len(expected_outputs) == 0 {
+                    register_pending_execution_output(ledger, tool_name)
+                } else {
+                    for expected_output in expected_outputs { register_artifact(ledger, expected_output, tool_name, false) }
+                }
+            }
         }
     }
     if is_artifact_tool(tool_name) {
@@ -104,10 +254,12 @@ export fn observe(ledger, tool_name, observation) {
             ledger["patch_written"] = true
             ledger["execution_passed"] = true
             if contains(text, "artifact_verified=true") || contains(text, "saved:") || contains(text, "success") {
-                ledger["artifact_verified"] = true
+                let generated_path = observation_output_path(observation)
+                if generated_path != "" { register_artifact(ledger, generated_path, tool_name, true) }
             }
         }
     }
+    refresh_artifact_stage(ledger)
     return ledger
 }
 
@@ -123,7 +275,8 @@ export fn missingStages(ledger, requirements) {
 
 export fn stageSummary(ledger) -> string {
     let completed = []
-    for stage in keys(ledger) {
+    let stages = ["target_located", "source_inspected", "error_reproduced", "patch_written", "execution_passed", "artifact_verified"]
+    for stage in stages {
         if ledger[stage] { push(completed, stage) }
     }
     if len(completed) == 0 { return "No tool-backed task stages are complete." }
