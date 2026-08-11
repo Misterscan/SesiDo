@@ -1,20 +1,23 @@
 {
   "name": "SesiDo",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "SesiDo - Native Sesi Autonomous Agent",
   "main": "index.sesi",
+  "bin": {
+    "sesi": "@misterscan/sesi"
+  },
   "scripts": {
-    "start": "sesi --cli -l main.sesi",
-    "research": "sesi --cli -l agent/ops/research.sesi",
-    "browser": "sesi --cli -l agent/ops/browser.sesi",
-    "summarize": "sesi --cli -l agent/ops/summarize.sesi",
-    "debug": "sesi --cli -l agent/ops/debug.sesi",
-    "gen:code": "sesi --cli -l agent/generate/coder.sesi",
-    "draw:image": "sesi --cli -l agent/draw/image.sesi",
-    "gen:image": "sesi --cli -l agent/generate/image.sesi",
-    "gen:pixel": "sesi --cli -l agent/generate/pixel-art.sesi",
-    "gen:svg": "sesi --cli -l agent/generate/svg.sesi",
-    "calculator": "sesi --cli -l agent/math/calculator.sesi"
+    "start": "sesi -l main.sesi",
+    "research": "sesi -l agent/ops/research.sesi",
+    "browser": "sesi -l agent/ops/browser.sesi",
+    "summarize": "sesi -l agent/ops/summarize.sesi",
+    "debug": "sesi -l agent/ops/debug.sesi",
+    "gen:code": "sesi -l agent/generate/coder.sesi",
+    "draw:image": "sesi -l agent/draw/image.sesi",
+    "gen:image": "sesi -l agent/generate/image.sesi",
+    "gen:pixel": "sesi -l agent/generate/pixel-art.sesi",
+    "gen:svg": "sesi -l agent/generate/svg.sesi",
+    "calculator": "sesi -l agent/math/calculator.sesi"
   },
   "keywords": [
     "ai",

@@ -1,13 +1,13 @@
-allow "./../agent/ledger/evidence" in with Evidence
-allow "../utils/safe" in with Safe
+allow "./../agent/ledger/evidence" in as Evidence
+allow "../utils/safe" in as Safe
 
 let failures = 0
 
 fn check(condition, message) {
     if condition {
-        print "PASS:" message
+        show "PASS:" message
     } else {
-        print "FAIL:" message
+        show "FAIL:" message
         failures = failures + 1
     }
 }
@@ -58,7 +58,7 @@ check(len(svg_ledger["artifacts"]) == 2, "source script and generated SVG are tr
 let multi_requirements = Evidence.requirementsFor("write a Sesi script and create an HTML page")
 let multi_artifact = Evidence.observe(Evidence.newLedger(), "write", "Success: Wrote to app.sesi", {"path": "app.sesi"}, multi_requirements)
 multi_artifact = Evidence.observe(multi_artifact, "write", "Success: Wrote to index.html", {"path": "index.html"}, multi_requirements)
-multi_artifact = Evidence.observe(multi_artifact, "read", "print 1", {"path": "app.sesi"}, multi_requirements)
+multi_artifact = Evidence.observe(multi_artifact, "read", "show 1", {"path": "app.sesi"}, multi_requirements)
 check(!multi_artifact["artifact_verified"], "verifying one of two artifacts does not complete the ledger")
 multi_artifact = Evidence.observe(multi_artifact, "read", "<html></html>", {"path": "index.html"}, multi_requirements)
 check(multi_artifact["artifact_verified"], "all individually tracked artifacts must be verified")
@@ -89,7 +89,7 @@ check(sesi_requirements["patch_written"], "writing a Sesi script requires a succ
 check(sesi_requirements["artifact_verified"], "a Sesi script is treated as an artifact")
 check(!sesi_requirements["execution_passed"], "a Sesi script is not executed unless execution is requested")
 let sesi_artifact = Evidence.observe(Evidence.newLedger(), "write", "Success: Wrote to tool.sesi", {"path": "tool.sesi"}, sesi_requirements)
-sesi_artifact = Evidence.observe(sesi_artifact, "read", "print 1", {"path": "tool.sesi"}, sesi_requirements)
+sesi_artifact = Evidence.observe(sesi_artifact, "read", "show 1", {"path": "tool.sesi"}, sesi_requirements)
 check(Evidence.guardFinal("Done.", sesi_artifact, sesi_requirements) == "Done.", "written and read-back Sesi script completes its ledger")
 
 let html_requirements = Evidence.requirementsFor("create an HTML page")
@@ -110,8 +110,8 @@ check(Evidence.noNewInformation("[]", "[]"), "identical null observations count 
 check(!Evidence.noNewInformation("[]", "[\"file\"]"), "changed observations count as new information")
 
 if failures > 0 {
-    print "Evidence-guard failures:" failures
+    show "Evidence-guard failures:" failures
     Safe.readFile("tests/__force_nonzero_for_failed_evidence_guard__")
 }
 
-print "All evidence-guard checks passed."
+show "All evidence-guard checks passed."

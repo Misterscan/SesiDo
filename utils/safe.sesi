@@ -2,7 +2,7 @@
     SesiDo Safe File Access
     File operations wrapped in try-catch blocks to prevent crashes
 */
-allow "std/time" in with Time
+allow "std/time" in as Time
 
 export fn makeDir(path: str) {make_dir(path)}
 export fn readFile(path: str) -> str? {
@@ -19,8 +19,8 @@ export fn readFile(path: str) -> str? {
       if contains(errText, "ENOENT") {
         return ""
       }
-      print "[SesiDo]: Failed to read file at:" path
-      print "Details:" err
+      show "[SesiDo]: Failed to read file at:" path
+      show "Details:" err
             attempts = attempts + 1
             Time.sleep(100)
         }
@@ -35,8 +35,8 @@ export fn writeFile(path: str, content: str) -> bool {
             write_file(path, content)
             success = true
         } catch (err) {
-            print "[SesiDo]: Failed to write to file at:" path
-            print "Details:" err
+            show "[SesiDo]: Failed to write to file at:" path
+            show "Details:" err
             attempts = attempts + 1
             Time.sleep(100)
         }
@@ -51,8 +51,8 @@ export fn writeImage(path: str, content: str) -> bool {
         write_image(path, content)
         success = true
         } catch (err) {
-            print "[SesiDo]: Failed to write image to file at:" path
-            print "Details:" err
+            show "[SesiDo]: Failed to write image to file at:" path
+            show "Details:" err
             attempts = attempts + 1
             Time.sleep(100)
         }
@@ -67,8 +67,8 @@ export fn appendFile(path: str, content: str) -> bool {
       append_file(path, content)
       success = true
     } catch (err) {
-        print "[SesiDo]: Failed to append to file at:" path
-        print "Details:" err
+        show "[SesiDo]: Failed to append to file at:" path
+        show "Details:" err
         attempts = attempts + 1
         Time.sleep(100)
     }
@@ -83,8 +83,8 @@ export fn moveFile(path: str, dest: str) -> bool {
       rename(path, dest)
       success = true
     } catch (err) {
-      print "[SesiDo]: Failed to move file at:" path
-      print "Details:" err
+      show "[SesiDo]: Failed to move file at:" path
+      show "Details:" err
       attempts = attempts + 1
       Time.sleep(100)
     }

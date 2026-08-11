@@ -1,5 +1,5 @@
 // SesiDo Coder Tool
-allow "../../build/index" in with SesiDo; set_alias("SesiDo-Pro", "gemini-3.1-pro-preview"); set_alias("SesiDo-Flash", "gemini-3-flash-preview"); let logTag = "[" + SesiDo.universalTime + "]"; print logTag + " [CODER]"; SesiDo.writeCode(args); print "[CODER FINISHED]"
+allow "../../build/index" in as SesiDo; set_alias("SesiDo-Pro", "gemini-3.1-pro-preview"); set_alias("SesiDo-Flash", "gemini-3-flash-preview"); let logTag = "[" + SesiDo.universalTime + "]"; show logTag + " [CODER]"; SesiDo.writeCode(args); show "[CODER FINISHED]"
 
 /*
 
@@ -7,7 +7,7 @@ allow "../../build/index" in with SesiDo; set_alias("SesiDo-Pro", "gemini-3.1-pr
 
         npm run gen:code "a photo of a cat"
 
-    SesiDo will spawn a child Sesi interpreter, set the appropriate aliases, print logging tags, and then invoke this script.
+    SesiDo will spawn a child Sesi interpreter, set the appropriate aliases, show logging tags, and then invoke this script.
 
     Args:
 

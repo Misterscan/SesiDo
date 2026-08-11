@@ -3,10 +3,10 @@
  This may be outdated so use it for reference only
 */
 
-allow "std/db" in with DB
+allow "std/db" in as DB
 allow "std/browser" in with {launch}
-allow "../agent/persona" in with Persona
-allow "../utils/safe" in with Safe
+allow "../agent/persona" in as Persona
+allow "../utils/safe" in as Safe
 allow "../helpers/timestamp" in with {
     localTime, universalTime, formattedTime
 }
@@ -169,7 +169,7 @@ Return a JSON object with the following keys: " jsonRep}
     clean = swap(clean, "```", "")
     brainJson = clean
     let brainSummary = structured_output({stable_facts: str, user_preferences: str, project_state: str, agent_identity: str, style_preferences: str, metaphors: str, discard: str})(brainJson)
-    print "[SesiDo]: Loaded session '" sid "' with " str(len(prevMessages)) " previous messages."
+    show "[SesiDo]: Loaded session '" sid "' with " str(len(prevMessages)) " previous messages."
     Safe.appendFile(".agent/" + sid + "-brain-summary.json", brainSummary)
     let memoryBlock = "
 SESSION MEMORY:
@@ -483,7 +483,7 @@ export fn writeCode(args) {
     if query == null || query == "" {
         return "Error: writeCode requires a query or request description."
     }
-    print "[SesiDo]: Writing code for:" query
+    show "[SesiDo]: Writing code for:" query
     let codeResponse = ""
     try {
         let preCode = model("SesiDo-Lite") {lowThink, mediumTemp, streamOutput} {brain " Enhance this code request for clarity and completeness:
@@ -492,7 +492,7 @@ export fn writeCode(args) {
         Write code for the following request (avoid verbatim recitation of large standard texts; paraphrase or draft custom versions if needed):
         " preCode}
     } catch (e) {
-        print "[SesiDo]: ⚠ Code generation failed (" str(e) "). Trying SesiDo-Flash..."
+        show "[SesiDo]: ⚠ Code generation failed (" str(e) "). Trying SesiDo-Flash..."
         try {
             codeResponse = model("SesiDo-Flash") {mediumThink, mediumTemp} {brain "Write code for: " query}
         } catch (e2) {
@@ -502,7 +502,7 @@ export fn writeCode(args) {
     let filename = codeDir + sanitize(query) + "-" + formattedTime + "-code.md"
     Safe.writeFile(filename, codeResponse)
 
-    print "[SesiDo]: Wrote code for" query "and saved to" codeDir "!"
+    show "[SesiDo]: Wrote code for" query "and saved to" codeDir "!"
     return codeResponse
 }
 
@@ -518,7 +518,7 @@ export fn debugCode(args) {
     }
     
     if targetFile == null && query == null {
-        print "[SesiDo]: Enter the path to the code file you want to debug..."
+        show "[SesiDo]: Enter the path to the code file you want to debug..."
         targetFile = input("[You]: ")
     } else if targetFile == null && query != null {
         let words = split(query, " ")
@@ -533,7 +533,7 @@ export fn debugCode(args) {
     }
     let codeContent = Safe.readFile(targetFile)
     if codeContent == null { return "Failed to read file." }
-    print "[SesiDo]: Debugging code in file: " targetFile
+    show "[SesiDo]: Debugging code in file: " targetFile
     let preCode = model("SesiDo-Pro") {lowTemp} {brain "
     Debug the following code and provide suggestions for improvements or fixes:
     " codeContent}
@@ -543,7 +543,7 @@ export fn debugCode(args) {
     " preCode}
     Safe.writeFile(codeDir + sanitize(targetFile) + "-" + formattedTime + "-debug.md", debugResponse)
 
-    print "[SesiDo]: Debugged code in" targetFile "and saved results to" codeDir "!"
+    show "[SesiDo]: Debugged code in" targetFile "and saved results to" codeDir "!"
     return debugResponse
 }
 
@@ -558,7 +558,7 @@ export fn research(args) {
     if query == null || query == "" {
         return "Error: research requires a query."
     }
-    print "[SesiDo]: Conducting research on:" query
+    show "[SesiDo]: Conducting research on:" query
     let researchResponse = ""
     try {
         researchResponse = model("SesiDo-Flash") {mediumThink, lowTemp, search, max_tokens: 500} {brain "
@@ -571,7 +571,7 @@ export fn research(args) {
         - synthesis: final prose
         " query}
     } catch (e) {
-        print "[SesiDo]: ⚠ Research failed (" str(e) "). Retrying with SesiDo-Lite..."
+        show "[SesiDo]: ⚠ Research failed (" str(e) "). Retrying with SesiDo-Lite..."
         try {
             researchResponse = model("SesiDo-Lite") {lowThink, lowTemp} {brain "Research: " query}
         } catch (e2) {
@@ -581,7 +581,7 @@ export fn research(args) {
     let filename = researchDir + sanitize(query) + "-" + formattedTime + "-research.md"
     Safe.writeFile(filename, researchResponse)
 
-    print "[SesiDo]: Research completed on" query "and saved results to" researchDir "!"
+    show "[SesiDo]: Research completed on" query "and saved results to" researchDir "!"
     return researchResponse
 }
 
@@ -606,14 +606,14 @@ export fn summarize(args) {
         let content = Safe.readFile(text)
         if content != null { text = content }
     }
-    print "[SesiDo]: Summarizing..."
+    show "[SesiDo]: Summarizing..."
     let summaryResponse = ""
     try {
         summaryResponse = model("SesiDo-Lite") {minimalThink, lowTemp, max_tokens: 1024} {brain "
         Summarize the following text:
         " text}
     } catch (e) {
-        print "[SesiDo]: ⚠ Summarization failed (" str(e) "). Retrying with SesiDo..."
+        show "[SesiDo]: ⚠ Summarization failed (" str(e) "). Retrying with SesiDo..."
         try {
             summaryResponse = model("SesiDo") {minimalThink, lowTemp} {brain "Summarize: " text}
         } catch (e2) {
@@ -623,7 +623,7 @@ export fn summarize(args) {
     let filename = summaryDir + sanitize(query) + "-" + formattedTime + "-summary.md"
     Safe.writeFile(filename, summaryResponse)
 
-    print "[SesiDo]: Summarized text and saved summary to" summaryDir "!"
+    show "[SesiDo]: Summarized text and saved summary to" summaryDir "!"
     return summaryResponse
 }
 
@@ -638,12 +638,12 @@ export fn calculator(args) {
     if expression == null || expression == "" {
         return "Error: calculator requires a mathematical expression."
     }
-    print "[SesiDo]: Calculating:" expression
+    show "[SesiDo]: Calculating:" expression
     let calcResponse = model("SesiDo-Flash") {minimalThink, minimalTemp, streamOutput} {brain "
     Calculate the following expression and provide the result:
     " expression}
 
-    print calcResponse
+    show calcResponse
     return calcResponse
 }
 
@@ -658,7 +658,7 @@ export fn createSVG(args) {
     if query == null || query == "" {
         return "Error: createSVG requires a description."
     }
-    print "[SesiDo]: Creating SVG for:" query
+    show "[SesiDo]: Creating SVG for:" query
     let svg_output_path = svgDir + sanitize(query) + "-" + formattedTime + ".svg"
     let preCode = model("SesiDo-Lite") {lowThink, mediumTemp} {"Enhance the following SVG creation request with robust details like layout, color scheme (hex values), coordinates, styling, and shape dimensions for a clean, modern look. Request: " query}
     let svgResponse = model("SesiDo-Pro") {lowThink, mediumTemp} {"You are a Sesi programming language code generator. Write a Sesi script using the 'std/draw' module to draw the SVG requested.
@@ -709,14 +709,14 @@ Request to draw: " preCode}
         try {
             sesi(cmd, true)
             let successMsg = "Success: Created and rendered SVG for " + query + " and saved to " + svgDir + "\nartifact_verified=true"
-            print "[SesiDo]:" successMsg
+            show "[SesiDo]:" successMsg
             return svgResponse + "\n\n" + successMsg
         } catch (e) {
-            print "[SesiDo]: ⚠ Error rendering SVG:" str(e)
+            show "[SesiDo]: ⚠ Error rendering SVG:" str(e)
             return "Error rendering SVG: " + str(e)
         }
     }
-    print "[SesiDo]: Saved SVG sesi code for" query " to" codeDir "!"
+    show "[SesiDo]: Saved SVG sesi code for" query " to" codeDir "!"
     return svgResponse
 }
 
@@ -736,7 +736,7 @@ export fn drawPixelArt(args) {
         return "Error: drawPixelArt requires a description."
     }
 
-    print "[SesiDo]: Creating pixel art for:" query
+    show "[SesiDo]: Creating pixel art for:" query
 
     let png_output_path = imageDir + sanitize(query) +"-"+ formattedTime +"-pixel-art.png"
     let pixelArtResponse = false
@@ -767,14 +767,14 @@ export fn drawPixelArt(args) {
         try {
             sesi(cmd, true)
             let successMsg = "Success: Created and rendered pixel art for " + query + " and saved to " + imageDir + "\nartifact_verified=true"
-            print "[SesiDo]:" successMsg
+            show "[SesiDo]:" successMsg
             return pixelArtResponse + "\n\n" + successMsg
         } catch(e) {
-            print "[SesiDo]: ⚠ Error rendering pixel art:" str(e)
+            show "[SesiDo]: ⚠ Error rendering pixel art:" str(e)
             return "Error rendering pixel art: " + str(e)
         }
     }
-    print "[SesiDo]: Saved pixel art sesi code for" query " to" codeDir "!"
+    show "[SesiDo]: Saved pixel art sesi code for" query " to" codeDir "!"
     return pixelArtResponse
 }
 
@@ -801,7 +801,7 @@ export fn drawImage(args) {
     refs = to_json(refs)
 
     try {
-        print "[SesiDo]: Drawing image for:" query
+        show "[SesiDo]: Drawing image for:" query
         prompt sys {"Create a PNG image with a Sesi script based on the following references: "refs}
         prompt filename {codeDir + sanitize(query) + "-" + formattedTime + "-image"}
         if !is_null(env("OPENAI_API_KEY")) {
@@ -823,14 +823,14 @@ export fn drawImage(args) {
             filename = swap(filename, codeDir, imageDir)
             filename = swap(filename, ".sesi", ".png")
             let successMsg = "Success: Drawn image for " + query + " and saved to " + imageDir + "\nartifact_verified=true"
-            print "[SesiDo]:" successMsg
+            show "[SesiDo]:" successMsg
             return pngResponse + "\n\n" + successMsg
         } catch (e) {
-            print "[SesiDo]: ⚠ Error rendering image:" str(e)
+            show "[SesiDo]: ⚠ Error rendering image:" str(e)
             return "Error rendering image: " + str(e)
         }
     } catch (e) {
-        print "[SesiDo]: ⚠ Error generating image:" str(e)
+        show "[SesiDo]: ⚠ Error generating image:" str(e)
         return "Error generating image: " + str(e)
     }
 }
@@ -846,7 +846,7 @@ export fn generateImage(args) {
     if query == null || query == "" {
         return "Error: generateImage requires a prompt."
     }
-    print "[SesiDo]: Generating image for:" query
+    show "[SesiDo]: Generating image for:" query
     let preImage = model("SesiDo-Lite") {lowThink, mediumTemp} {brain "
     
 Enhance this image request with verbosity and details: " query}
@@ -860,7 +860,7 @@ Enhance this image request with verbosity and details: " query}
     let filename = imageDir + sanitize(query) + "-" + formattedTime + "-image.png"
     Safe.writeImage(filename, imageResponse)
     let msg = "Success: Generated image for " + query + " and saved to " + imageDir + "\nartifact_verified=true"
-    print "[SesiDo]:" msg
+    show "[SesiDo]:" msg
     return msg
 }
 
@@ -880,12 +880,12 @@ export fn getImageInfo(args) {
     if !contains(imagePath, "/") {
         imagePath = imageDir + imagePath
     }
-    print "[SesiDo]: Analyzing image at:" imagePath
+    show "[SesiDo]: Analyzing image at:" imagePath
     let info = model("SesiDo-Flash") {images: imagePath, lowThink, lowTemp} {brain "
     Provide metadata, details, and a rich description about the image and observable content."}
     let filename = imageDir + sanitize(imagePath) + "-image-info.md"
     Safe.writeFile(filename, info)
-    print "[SesiDo]: Image info for" imagePath ":
+    show "[SesiDo]: Image info for" imagePath ":
 " info
     return info
 }
@@ -919,7 +919,7 @@ export fn browsePage(args) {
     } else if !contains(url, "://") {
         url = "https://" + url
     }
-    print "[SesiDo]: Browser operation '" operation "' on:" url
+    show "[SesiDo]: Browser operation '" operation "' on:" url
     let browserResponse = ""
     try {
         let browser = launch({"headless": true})
@@ -961,13 +961,13 @@ export fn browsePage(args) {
         page.close()
         browser.close()
     } catch(e) {
-        print "[SesiDo]: ⚠ Browser operation failed (" str(e) ")"
+        show "[SesiDo]: ⚠ Browser operation failed (" str(e) ")"
         browserResponse = "Browser operation failed: " + str(e)
     }
     
     let filename = browserDir + sanitize(url) + "-" + formattedTime + "-browser.md"
     Safe.writeFile(filename, browserResponse)
-    print "[SesiDo]: Browser results saved to" browserDir "!"
+    show "[SesiDo]: Browser results saved to" browserDir "!"
     return browserResponse
 }
 
@@ -1005,19 +1005,19 @@ export fn createSession(args) {
     brain = get_base_brain()
 
     let msg = "Success: Created and switched to new session '" + sid + "'."
-    print "[SesiDo]:" msg
+    show "[SesiDo]:" msg
     return msg
 }
 
 export fn clearCurrentSession() {
-    print "[SesiDo]: Clearing history for session:" currentSessionId
+    show "[SesiDo]: Clearing history for session:" currentSessionId
     try {
         history.delete({"sessionId": currentSessionId})
         brain = get_base_brain()
-        print "[SesiDo]: Cleared history and reset memory for session:" currentSessionId
+        show "[SesiDo]: Cleared history and reset memory for session:" currentSessionId
         return "Success: History cleared and memory reset for session '" + currentSessionId + "'."
     } catch (e) {
-        print "[SesiDo]: Error clearing session history: " str(e)
+        show "[SesiDo]: Error clearing session history: " str(e)
         return "Error clearing session: " + str(e)
     }
 }
@@ -1034,7 +1034,7 @@ export fn switchSession(args) {
     
     if sid == null || sid == "" || sid == "{}" { return "Error: switchSession requires a session id (e.g. {id: 'my-session'})." }
     
-    print "[SesiDo]: Switching to session:" sid
+    show "[SesiDo]: Switching to session:" sid
     loadSession(sid)
     return "Success: Switched to session '" + sid + "'. You are now in a fresh or existing context for this ID."
 }
@@ -1050,7 +1050,7 @@ export fn listSessions() {
         res = res + "- " + s["id"] + activeMark + "
 "
     }
-    print "[SesiDo]" res
+    show "[SesiDo]" res
     return res
 }
 
@@ -1257,8 +1257,8 @@ export fn localTools() {
     register_tool("makeSVGBanner", makeSVGBanner, "Creates an SVG banner. Args: {path: string, title: string, tagline?: string, theme?: string}.")
     
     let _registry = list_tools()
-    print "local tool registry loaded -" str(len(_registry)) "tools available"
-    print to_json(tool_refs)
+    show "local tool registry loaded -" str(len(_registry)) "tools available"
+    show to_json(tool_refs)
 }
 
 export fn list_tool_names(tool_map) {
@@ -1272,7 +1272,7 @@ export fn list_tool_names(tool_map) {
 }
 
 fn showhelp() {
-    print "[SesiDo]: How can I assist you today?
+    show "[SesiDo]: How can I assist you today?
                 - Enter 'new' to create a new agent session.
                 - Enter 'list' to see all available sessions.
                 - Enter 'open' to open a specific session by ID.
@@ -1324,7 +1324,7 @@ fn chat() {
         let cmd = trim(userInput)
         userInput = cmd
         if userInput == "exit" || userInput == "quit" || userInput == "" {
-            print "[SesiDo]: Goodbye!"
+            show "[SesiDo]: Goodbye!"
             break
         }
         if userInput == "clear" {
@@ -1332,10 +1332,10 @@ fn chat() {
             continue
         }
         if userInput == "new" {
-            print "[SesiDo]: Enter a new session ID (or leave blank to auto-generate):"
+            show "[SesiDo]: Enter a new session ID (or leave blank to auto-generate):"
             let newSessionId = input("[You]: ")
             let result = createSession(newSessionId)
-            print result
+            show result
             continue
         }
         if userInput == "list" {
@@ -1343,17 +1343,17 @@ fn chat() {
             continue
         }
         if userInput == "open" {
-            print "[SesiDo]: Enter the session ID you want to open:"
+            show "[SesiDo]: Enter the session ID you want to open:"
             let sessionId = input("[You]: ")
             let result = switchSession(sessionId)
-            print result
+            show result
             continue
         }
         if userInput == "help" {
             showhelp()
             continue
         }
-        print "[SesiDo]: Thinking..."
+        show "[SesiDo]: Thinking..."
         
         // --- ReAct loop ---
         let steps_taken = 0
@@ -1366,7 +1366,7 @@ fn chat() {
         let error_count = 0
         
         while steps_taken < max_steps {
-            print "[SesiDo]: Step " + str(steps_taken + 1) + "/" + str(max_steps)
+            show "[SesiDo]: Step " + str(steps_taken + 1) + "/" + str(max_steps)
             prompt react_prompt {brain "
                 System: You are an agent with access to these tools:
                 " tools_desc "
@@ -1437,11 +1437,11 @@ fn chat() {
             try {
                 step_text = model("SesiDo-Flash") {mediumThink, lowTemp} {react_prompt}
             } catch (e) {
-                print "[SesiDo]: ⚠ SesiDo-Flash failed (" str(e) "). Retrying with SesiDo-Lite..."
+                show "[SesiDo]: ⚠ SesiDo-Flash failed (" str(e) "). Retrying with SesiDo-Lite..."
                 try {
                     step_text = model("SesiDo-Lite") {lowThink, lowTemp} {react_prompt}
                 } catch (e2) {
-                    print "[SesiDo]: ❌ All models failed."
+                    show "[SesiDo]: ❌ All models failed."
                     final_res = "I encountered a safety or technical block across all models. Please rephrase your request."
                     break
                 }
@@ -1472,7 +1472,7 @@ fn chat() {
             let step = structured_output({thought: string, tool_name: string, tool_args_json: string, finished: bool, final_answer: string})(step_text)
             
             if step == null || len(keys(step)) == 0 {
-                print "[SesiDo]: ⚠ Could not parse reasoning step."
+                show "[SesiDo]: ⚠ Could not parse reasoning step."
                 error_count = error_count + 1
                 react_history = react_history + "
 Thought: Failed to parse step response.
@@ -1483,7 +1483,7 @@ Observation: Invalid JSON format.
                     break
                 }
             } else {
-                print "💭" step["thought"]
+                show "💭" step["thought"]
 
                 if step["finished"] {
                     final_res = step["final_answer"]
@@ -1505,20 +1505,20 @@ Observation: Invalid JSON format.
                 if tool_name == null || tool_name == "" {
                     obs = "Reasoning step completed. No tool called."
                 } else {
-                    print "🛠️ Calling tool:" tool_name
+                    show "🛠️ Calling tool:" tool_name
                     let tool_fn = tool_map[tool_name]
                     if tool_fn == null {
                         obs = "Error: Tool '" + tool_name + "' is not registered."
-                        print "[SesiDo]: ❌ Tool not found:" tool_name
+                        show "[SesiDo]: ❌ Tool not found:" tool_name
                         error_count = error_count + 1
                     } else {
                         try {
                             obs = tool_fn(tool_args)
-                            print "📥 Observation:" obs
+                            show "📥 Observation:" obs
                             error_count = 0
                         } catch (e) {
                             obs = "Error executing tool: " + str(e)
-                            print "[SesiDo]: ❌ Tool error:" e
+                            show "[SesiDo]: ❌ Tool error:" e
                             error_count = error_count + 1
                         }
                     }
@@ -1546,7 +1546,7 @@ Observation: " + obs + "
         }
         
         // --- Respond and persist ---
-        print "[SesiDo]:" final_res
+        show "[SesiDo]:" final_res
         
         let logEntry = "[USER]: " + userInput + "
 [THOUGHTS]:
@@ -1570,9 +1570,9 @@ export fn main() {
     // Imported modules run exported functions in the caller's interpreter.
     // Register SesiDo's model aliases there as well as during module loading.
     setModel()
-    print "[SesiDo]: Starting chat..."
+    show "[SesiDo]: Starting chat..."
     let logTag = "[" + universalTime + "]"
-    print logTag + " [CHAT]"
+    show logTag + " [CHAT]"
     chat()
-    print "[CHAT ENDED]"
+    show "[CHAT ENDED]"
 }

@@ -1,12 +1,12 @@
-allow "../agent/ledger/pixel-grid" in with PixelGrid
+allow "../agent/ledger/pixel-grid" in as PixelGrid
 
 let failures = 0
 
 fn check(condition, message) {
     if condition {
-        print "PASS:" message
+        show "PASS:" message
     } else {
-        print "FAIL:" message
+        show "FAIL:" message
         failures = failures + 1
     }
 }
@@ -73,8 +73,8 @@ try {
 check(artifact_verified, "validated script executes and output file exists")
 
 if failures > 0 {
-    print "Pixel-grid validation failures:" failures
+    show "Pixel-grid validation failures:" failures
     read_file("tests/__force_nonzero_for_failed_validation__")
 }
 
-print "All pixel-grid validation checks passed."
+show "All pixel-grid validation checks passed."
