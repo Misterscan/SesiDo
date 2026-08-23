@@ -53,17 +53,23 @@ fn same_path(left, right) -> bool {
 fn is_mutation(tool_name) -> bool {
     let mutation_tools = [
         "write", "appendTo", "remove", "move", "newDir", "makeDir",
-        "fileOps", "lineSwap", "createSVG", "drawPixelArt", "generateImage", "drawImage"
+        "temp", "fileOps", "lineSwap", "writeCode", "debugCode",
+        "makeSVGBadge", "makeSVGBanner", "createSVG", "drawPixelArt",
+        "generateImage", "generateVideo", "drawImage"
     ]
     return has_item(mutation_tools, tool_name)
 }
 
 fn is_execution(tool_name) -> bool {
-    return tool_name == "runSesi" || tool_name == "safeRun" || tool_name == "eval" || tool_name == "drawImage" || tool_name == "drawPixelArt" || tool_name == "createSVG"
+    return tool_name == "runSesi" || tool_name == "safeRun" || tool_name == "eval" || tool_name == "drawImage" || tool_name == "drawPixelArt" || tool_name == "createSVG" || tool_name == "generateVideo"
 }
 
 fn is_artifact_tool(tool_name) -> bool {
-    return tool_name == "drawPixelArt" || tool_name == "createSVG" || tool_name == "generateImage" || tool_name == "drawImage"
+    return tool_name == "drawPixelArt" || tool_name == "createSVG" || tool_name == "generateImage" || tool_name == "generateVideo" || tool_name == "drawImage"
+}
+
+export fn tracksTool(tool_name) -> bool {
+    return is_mutation(tool_name) || is_execution(tool_name) || tool_name == "read" || tool_name == "list" || tool_name == "textSearch" || tool_name == "getImageInfo"
 }
 
 fn produces_file_path(tool_name) -> bool {
@@ -186,12 +192,12 @@ export fn requirementsFor(request) {
     let needs_debug = contains(text, "debug") || contains(text, "fix") || contains(text, "patch") || (failure_report && failure_target)
     let write_action = contains(text, "write") || contains(text, "create") || contains(text, "generate") || contains(text, "draw") || contains(text, "save") || contains(text, "build") || contains(text, "make")
     let existing_action = contains(text, "update") || contains(text, "edit") || contains(text, "change") || contains(text, "modify")
-    let file_target = contains(text, "file") || contains(text, "script") || contains(text, "code") || contains(text, "artifact") || contains(text, "page") || contains(text, "site") || contains(text, "document") || contains(text, "sesi") || contains(text, "html") || contains(text, "svg") || contains(text, "image") || contains(text, "pixel art") || contains(text, "pixel-art")
+    let file_target = contains(text, "file") || contains(text, "script") || contains(text, "code") || contains(text, "artifact") || contains(text, "page") || contains(text, "site") || contains(text, "document") || contains(text, "sesi") || contains(text, "html") || contains(text, "svg") || contains(text, "image") || contains(text, "video") || contains(text, "pixel art") || contains(text, "pixel-art")
     let needs_mutation = needs_debug || existing_action || (write_action && file_target)
     let uses_existing_source = contains(text, "using exported") || contains(text, "using existing") || contains(text, "from the existing") || existing_action
     let needs_source_inspection = needs_debug || uses_existing_source
     let needs_execution = needs_debug || contains(text, "run") || contains(text, "execute") || contains(text, "test") || contains(text, "render")
-    let visual_target = contains(text, "pixel art") || contains(text, "pixel-art") || contains(text, "svg") || contains(text, "image")
+    let visual_target = contains(text, "pixel art") || contains(text, "pixel-art") || contains(text, "svg") || contains(text, "image") || contains(text, "video")
     let artifact_action = write_action || contains(text, "render") || needs_debug
     let needs_artifact = file_target && artifact_action
     let needs_render_execution = visual_target && artifact_action
@@ -229,7 +235,13 @@ export fn observe(ledger, tool_name, observation, tool_args = null, requirements
     if is_mutation(tool_name) && !failed {
         ledger["target_located"] = true
         ledger["patch_written"] = true
-        if produces_file_path(tool_name) && path != "" { register_artifact(ledger, path, tool_name, false) }
+        // A successful mutation tool is itself the write acknowledgement. Do not
+        // force the agent to reread the same file before it can report success.
+        if requirements != null && requirements["artifact_verified"] {
+            register_artifact(ledger, path, tool_name, true)
+        } else if produces_file_path(tool_name) && path != "" {
+            register_artifact(ledger, path, tool_name, true)
+        }
     }
     if is_execution(tool_name) {
         ledger["target_located"] = true
@@ -273,6 +285,14 @@ export fn missingStages(ledger, requirements) {
     return missing
 }
 
+export fn requiresEvidence(requirements) -> bool {
+    if requirements == null || type(requirements) != "object" { return false }
+    for stage in keys(requirements) {
+        if requirements[stage] { return true }
+    }
+    return false
+}
+
 export fn stageSummary(ledger) -> string {
     let completed = []
     let stages = ["target_located", "source_inspected", "error_reproduced", "patch_written", "execution_passed", "artifact_verified"]
@@ -285,6 +305,7 @@ export fn stageSummary(ledger) -> string {
 
 export fn guardFinal(answer, ledger, requirements) -> string {
     let response = str(answer)
+    if !requiresEvidence(requirements) { return response }
     let text = to_lower(response)
     let unsupported = []
 

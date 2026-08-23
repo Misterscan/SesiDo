@@ -26,11 +26,14 @@ prompt request {"A simple minimalist company logo for a bakery"}
 let imageData = image("gemini-3.1-flash-image") {ratio: "1:1", size: "1K"} {request}
 
 // 3. Write the payload to disk
-try
-{let success = write_image("bakery_logo.png", imageData)
-if success {print "Saved bakery_logo.png successfully."}}
-catch (e) {print "Failed to generate image:"
-print e}
+try {
+    let success = write_image("bakery_logo.png", imageData)
+    if success {
+        show "Saved bakery_logo.png successfully."
+    }
+} catch (e) {
+    show "Failed to generate image:" e
+}
 ```
 
 <img src="bakery_logo.png" alt="Bakery Logo" style="width:480px;">
@@ -43,24 +46,32 @@ Here is a practical script demonstrating how to iterate over a data set, generat
 // Set up output directory
 let outputDir = "assets/products/"
 make_dir(outputDir)
+
 let products = ["coffee_mug", "desk_lamp", "notebook"]
 
 // Iterate through the list and generate a file for each
-for product in products
-{print "Generating asset for:" product
+for product in products {
+    show "Generating asset for:" product
+}
 
 // Construct the instruction for the model
 prompt request {"A clean studio presentation photograph of a " product " on a solid white background."}
 prompt filename { outputDir product ".png" }
-try
-{let imageData = image("gemini-3.1-flash-image") {ratio: "1:1", size: "1K"} {request}
 
-// Attempt local file write
-let success = write_image(filename, imageData)
-if success {print "Saved:" filename}}
-catch (e) {print "Failed processing" product ":"
-print e}}
-print "Asset generation complete."
+try {
+    let imageData = image("gemini-3.1-flash-image") {ratio: "1:1", size: "1K"} {request}
+
+    // Attempt local file write
+    let success = write_image(filename, imageData)
+
+    if success {
+        show "Saved:" filename
+    }
+} catch (e) {
+    show "Failed processing" product ":" e
+}
+
+show "Asset generation complete."
 ```
 
 <img src="coffee_mug.png" alt="Coffee Mug" style="width:340px;">
@@ -75,11 +86,20 @@ When configuring the `image` call (specifically for models like `gemini-3.1-flas
 - `size`: Dimensional sizing constraints (Must be `"512"`, `"1K"`, `"2K"`, or `"4K"`).
 - `temperature`: _Will be deprecated in Gemini 3.x+, use thinkingLevel instead._ — controls variance.
 
+GPT image models are also supported through the same `image()` primitive. When you pass a model such as `gpt-image-2`, Sesi routes the call through OpenAI's image generation API and uses `ratio` to choose an OpenAI-compatible output size.
+
+```sesi
+let logo = image("gpt-image-2") {ratio: "1:1"} {"A bold, flat logo for a fictional studio, black on warm white."}
+write_image("gpt-generated-logo.png", logo)
+```
+
+<img src="gpt-generated-logo.png" alt="GPT Generated Logo" style="width:340px;">
+
 ## File I/O Integration: `write_image`
 
-The `image()` call evaluates to a `string` (specifically, base64-encoded image data). To convert this into a standard image file on disk, you must use the `write_image(path, base64_content)` builtin.
+The `image()` call evaluates to a `string` (specifically, base64-encoded image data). To convert this into a standard image file on disk, use either `write_image(path, base64_content)` or `write_file(path, base64_content, "base64")`.
 
-**Important:** Do _not_ use `write_file` for image payloads—`write_image` is explicitly implemented in the Sesi engine (`src/builtins.ts`) to handle `Buffer.from(content, 'base64')` decoding for writing safe binary formats.
+`write_image` remains the clearest option for image payloads, while `write_file(..., "base64")` is useful for generalized binary writes.
 
 ---
 
@@ -104,24 +124,29 @@ image("model-name") {images: pathExpr} {prompt}
 
 ```sesi
 let caption = model("gemini-3-flash-preview") {images: "shots/frame_01.jpg"} {"Describe what is happening in this photograph in one paragraph."}
-print caption
+
+show caption
 ```
 
 ### Multiple Images — Side-by-Side Comparison
 
 ```sesi
 let frames = ["take_a.jpg", "take_b.jpg"]
+
 let notes = model("gemini-3-flash-preview") {images: frames} {"These are two alternate takes of the same scene. List the differences in composition and lighting."}
-print notes
+
+show notes
 ```
 
 ### Dynamic Path from a Variable
 
 ```sesi
 let src = "scans/print_neg_04.png"
+
 let reading = model("gemini-3-flash-preview") {images: src} {"Read and transcribe all visible text in this image."}
+
 write_file("output/transcription.txt", reading)
-print "Transcription saved."
+show "Transcription saved."
 ```
 
 ### Reference-Guided Image Generation
@@ -130,9 +155,11 @@ Pass a reference image to an image-generation model to ground its output.
 
 ```sesi
 let ref = "references/grille_detail.jpg"
+
 let render = image("gemini-3.1-flash-image") {images: ref, ratio: "16:9"} {"Render a full front elevation in the same visual style as the reference."}
+
 write_image("output/elevation.png", render)
-print "Render saved."
+show "Render saved."
 ```
 
 ### Pipeline: Batch Description from a Directory
@@ -141,10 +168,11 @@ print "Render saved."
 let dir = "frames/"
 let files = list_dir(dir)
 
-for f in files
-{prompt p {dir f}
-let desc = model("gemini-3.5-flash-lite") {images: p} {"Describe this frame in one sentence."}
-print f desc}
+for f in files {
+    prompt p {dir f}
+    let desc = model("gemini-3.5-flash-lite") {images: p} {"Describe this frame in one sentence."}
+    show f desc
+}
 ```
 
 ### Config Reference

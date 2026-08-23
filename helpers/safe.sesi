@@ -34,6 +34,10 @@ export fn getFileType(path: str) -> str {
   return getExtension(path)
 }
 
+export fn fileType(path: str) -> str {
+  return getExtension(path)
+}
+
 export fn extension(path: str) -> str {
   return getExtension(path)
 }
@@ -675,6 +679,31 @@ export fn HTML(title: string, content: string, head: string, css: any = "", lang
     let filename = title | to_lower | swap(" ", "_") | trim
     return write(filename + ".html", webpage)
   }
+}
+
+export fn tempFile(filename: string, content: string, ext: string) {
+  return write(filename + "_temp." + ext, content)
+}
+
+export fn tempMedia(filename: string, content: string, ext: string) {
+  return write(filename + "_temp." + ext, content, "base64")
+}
+
+export fn tempFolder(name: string, files: array<string>) -> bool {
+  let dir = "temp/" + name + "/"
+  createFolder(dir)
+
+  for file in files {
+    try {
+      write(dir + file, "")
+      show "Scaffolded" file "in" dir
+    } catch (e) {
+      show "Failed to write" file "to" dir ":" e.message
+      return false
+    }
+  }
+
+  return true
 }
 
 // For quick web pages

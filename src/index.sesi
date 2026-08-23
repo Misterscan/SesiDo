@@ -18,6 +18,7 @@ let artifactsDir = workspaceRoot + ".artifacts/"
 let logsDir = workspaceRoot + "logs/"
 let codeDir = artifactsDir + "code/"
 let imageDir = artifactsDir + "images/"
+let videoDir = artifactsDir + "videos/"
 let svgDir = artifactsDir + "svgs/"
 let summaryDir = artifactsDir + "summaries/"
 let researchDir = artifactsDir + "research/"
@@ -29,6 +30,7 @@ make_dir(artifactsDir)
 make_dir(logsDir)
 make_dir(codeDir)
 make_dir(imageDir)
+make_dir(videoDir)
 make_dir(svgDir)
 make_dir(summaryDir)
 make_dir(researchDir)
@@ -58,8 +60,8 @@ let agentOptionalMD = Persona.getAgentOptionalMD()
 let agentOtherMD = Persona.getAgentOtherMD()
 let agentTools = Persona.getAgentTools()
 
-export let sesiDoModels = ["SesiDo", "SesiDo-Heavy", "SesiDo-Pro", "SesiDo-Lite", "SesiDo-Lite-Power", "SesiDo-Flash", "SesiDo-Image", "SesiDo-Image-Lite", "SesiDo-GPT", "SesiDo-GPT-Pro", "SesiDo-GPT-Lite", "SesiDo-GPT-Image"]
-export let ogNames = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-image-2"]
+export let sesiDoModels = ["SesiDo", "SesiDo-Exp", "SesiDo-Pro", "SesiDo-Lite", "SesiDo-Lite-Power", "SesiDo-Flash", "SesiDo-Image", "SesiDo-Image-Lite", "SesiDo-Video", "SesiDo-GPT", "SesiDo-GPT-Pro", "SesiDo-GPT-Lite", "SesiDo-GPT-Image"]
+export let ogNames = ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image", "veo-3.1-lite-generate-preview", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-image-2"]
 
 export fn setModel(alias: str, model_name: str) {
     if alias != null {
@@ -77,6 +79,7 @@ export fn setModel(alias: str, model_name: str) {
         set_alias(sesiDoModels[9], ogNames[9])
         set_alias(sesiDoModels[10], ogNames[10])
         set_alias(sesiDoModels[11], ogNames[11])
+        set_alias(sesiDoModels[12], ogNames[12])
     }
 }
 
@@ -286,6 +289,47 @@ fn write(args) {
             return "Error writing file:" + str(e)
         }
     }
+}
+
+fn temp(args) {
+    let title = null
+    let content = null
+    let ext = null
+    let path = null
+    let mode = "text"
+    if type(args) == "object" {
+        title = args["title"]
+        content = args["content"]
+        ext = args["ext"]
+        mode = args["mode"]
+    }
+    if (title | is_null) || (content | is_null) || (ext | is_null) {
+        return "Error: temp requires title, content, and ext. Example: \"title\": \"file_name\", \"content\": \"content goes in here\", \"ext\": \"sesi\""
+    }
+    path = title + "_temp." + ext
+    try {
+        if mode == "media" {
+            Safe.tempMedia(title, content, ext)
+        } else {
+            Safe.tempFile(title, content, ext)
+        }
+        return "Sucess: Wrote temp file to" + path + ". Remember to trash this file after usage!"
+    } catch (e) {
+        return "Error writing temp file:" + str(e)
+    }
+}
+
+fn extGet(args) {
+    let path = null
+    if type(args) == "object" {
+        path = args["path"]
+    } else {
+        path = args
+    }
+    if path | is_null {
+        return "Error: extGet requires a path."
+    }
+    return Safe.extension()
 }
 
 fn remove(args) {
@@ -835,11 +879,47 @@ export fn drawImage(args) {
     }
 }
 
+export fn generateVideo(args) {
+    let query = null
+    let vidLength = null
+    let avoid = null
+    if type(args) == "object" {
+        if args["query"] != null { query = args["query"]
+        } else if args["prompt"] != null { query = args["prompt"]}
+        if args["duration"] != null { vidLength = args["duration"] | num}
+        if args["negative"] != null { avoid = args["negative"]}
+    }
+    if (query | is_null) || query == "" || !(vidLength | is_number) || (vidLength | is_null) || vidLength == "" || (avoid | is_null) || avoid == "" {
+        return "Error: generateVideo requires a prompt, duration, and negative prompt."
+    }
+    if vidLength != 2 && vidLength != 4 && vidLength != 6 && vidLength != 8 {
+        return "Error: generateVideo duration must be 2, 4, 6, or 8 seconds."
+    }
+    show "[SesiDo]: Generating video for:" query
+    let preVideo = model("SesiDo-Flash") {thinking: lowThink, temp: mediumTemp} {"Enhance this video prompt with rich detail and relevant context:
+    "query"
+    # What to avoid in your enhanced prompt:
+    "avoid"
+    Maintain user intent. Return only the enhanced prompt."}
+
+    let videoResponse = video("SesiDo-Video") {duration: vidLength} {preVideo}
+    let filename = videoDir + sanitize(query) + "-" + formattedTime + ".mp4"
+    let wrote = Safe.saveMedia(filename, videoResponse)
+    let savedVideo = exists(filename)
+    if !wrote || savedVideo == false || savedVideo == "" {
+        return "Error: Generated video was not saved and verified at " + filename
+    }
+    let msg = "Success: Video generated. artifact_verified=true; output=" + filename
+    show "[SesiDo]:" msg
+    return msg
+}
+
 export fn generateImage(args) {
     let query = null
     if type(args) == "object" {
         if args["query"] != null { query = args["query"] 
         } else if args["prompt"] != null { query = args["prompt"] }
+
     } else {
         query = args
     }
@@ -1227,7 +1307,9 @@ export fn localTools() {
     register_tool("move", move, "Moves a file or directory. Args: {path: string, dest: string}")
     register_tool("read", read, "Safely reads a file. Args: {path: string}")
     register_tool("write", write, "Safely writes a file. Args: {path: string, content: string}")
+    register_tool("temp", temp, "Safely creates a temporary file on disk, supports both text and base64 (media) content. Args: {title: string, content: string, ext: string, mode: string = text}")
     register_tool("appendFile", appendFile, "Appends to a file. Args: {path: string, content: string}")
+    register_tool("extGet", extGet, "Retrieves the extension of a file. Args: {path: string}")
     register_tool("remove", remove, "Safely removes a file. Args: {path: string}")
     register_tool("list", list, "Safely lists a directory. Args: {path: string}")
     register_tool("safeRun", safeRun, "Safely runs a Sesi script/tool. Args: {command: string}")
@@ -1241,6 +1323,7 @@ export fn localTools() {
     register_tool("calculator", calculator, "Calculates math. Args: {expression: string}")
     register_tool("createSVG", createSVG, "Generates SVG. Args: {description: string}")
     register_tool("generateImage", generateImage, "Generates image. Args: {query: string}")
+    register_tool("generateVideo", generateVideo, "Generates a video. Args: {query: string, duration: 2|4|6|8, negative: string}")
     register_tool("drawPixelArt", drawPixelArt, "Generates pixel art / avatars / pixel-art visuals. Args: {description: string}")
     register_tool("drawImage", drawImage, "Draws an image without calling an image generator. Args: {description: string}")
     register_tool("getImageInfo", getImageInfo, "Analyzes image. Args: {path: string}")
@@ -1286,8 +1369,10 @@ fn chat() {
     let tool_map = {}
     tool_map["read"] = read
     tool_map["write"] = write
+    tool_map["temp"] = temp
     tool_map["appendFile"] = appendFile
     tool_map["remove"] = remove
+    tool_map["extGet"] = extGet
     tool_map["makeDir"] = makeDir
     tool_map["move"] = move
     tool_map["list"] = list
@@ -1301,6 +1386,7 @@ fn chat() {
     tool_map["summarize"] = summarize
     tool_map["calculator"] = calculator
     tool_map["createSVG"] = createSVG
+    tool_map["generateVideo"] = generateVideo
     tool_map["generateImage"] = generateImage
     tool_map["drawPixelArt"] = drawPixelArt
     tool_map["drawImage"] = drawImage
@@ -1370,7 +1456,7 @@ fn chat() {
             prompt react_prompt {brain "
                 System: You are an agent with access to these tools:
                 " tools_desc "
-                Solve the user's request in as few steps as possible, using tools only when helpful or requested. Do not inspect directories, files, tools, or project context before a self-contained request that directly maps to one registered tool. For a request to create pixel art, an avatar, a pixel-art visual, SVG, or image, call the corresponding generation tool in the first step using the user's request as its argument. For drawPixelArt, tool_args_json MUST be a JSON object with a non-empty description string, for example: {\"description\":\"SesiDo avatar in polished pixel art\"}. At each step, output a JSON object with ONLY these keys:
+                Solve the user's request in as few steps as possible, using tools only when helpful or requested. Do not inspect directories, files, tools, or project context before a self-contained request that directly maps to one registered tool. For a request to create pixel art, an avatar, a pixel-art visual, SVG, image, or video, call the corresponding generation tool in the first step using the user's request as its argument. For drawPixelArt, tool_args_json MUST be a JSON object with a non-empty description string, for example: {\"description\":\"SesiDo avatar in polished pixel art\"}. For generateVideo, tool_args_json MUST include query, duration (2, 4, 6, or 8), and a negative prompt. At each step, output a JSON object with ONLY these keys:
                     - thought(string): your reasoning(be descriptive but avoid verbatim recitation of known long texts)
                     - tool_name(string): name of tool to call, or empty string if done
                     - tool_args_json(string): A VALID JSON string of arguments for the tool (keys MUST be quoted). NEVER leave this empty if you are calling a tool, you MUST provide the args required.

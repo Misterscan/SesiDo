@@ -1,0 +1,2 @@
+// SesiDo Video Generation Tool
+allow "../../build/index" in as SesiDo; set_alias("SesiDo-Flash", "gemini-3-flash-preview"); set_alias("SesiDo-Video", "veo-3.1-lite-generate-preview"); let logTag = "[" + SesiDo.universalTime + "]"; show logTag + " [VIDEO] "; SesiDo.generateVideo({"prompt": args[0], "duration": args[1], "negative": args[2]} ); show "[VIDEO FINISHED]"

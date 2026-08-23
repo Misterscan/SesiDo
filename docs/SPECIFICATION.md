@@ -41,7 +41,7 @@ Sesi is built on these core principles:
 - ✅ Process and Desktop Integration (`spawn`, `exec`, `open`, `open_file`, `time`, `random`, `convert`, `format`)
 - ✅ Comments (`//`, `/* */`) — text is preserved in AST as `leadingComments` on declarations for doc tooling
 - ✅ Operators (arithmetic, logical, comparison)
-- ✅ Standard library (print, len, range, etc.)
+- ✅ Standard library (show, len, range, etc.)
 - ✅ Interactive REPL shell environment (`sesi`)
 - ✅ Diagnostic Tools (`--ast` and `--tokens` pretty visualization)
 - ✅ Statement execution tracing (`SESI_DEBUG=1` env variable)
@@ -78,9 +78,11 @@ Sesi is built on these core principles:
 #### Keywords
 
 ```
-let if else while for fn make print import export async
+let if else while for fn make show import export async
 prompt model image convert memory structured_output tool_call break continue try catch true false null await
 ```
+
+These words are reserved and cannot be used as binding, function, parameter, template, prompt, memory, or import names. In particular, `make` is reserved exactly like `prompt`.
 
 #### Identifiers & Literals
 
@@ -110,13 +112,15 @@ statement := declaration | expression_statement | block_statement
 #### Variable Declaration
 
 ```
-let_stmt := 'let' identifier ('=' expression)? (';' | newline)
+let_stmt := 'let' identifier (':' type)? ('=' expression)? (';' | newline)
 ```
 
 Example:
 
 ```sesi
 let x = 10
+let count: number = 10
+let name: string = "Ada"
 let y = 20
 let z  // z is null initially
 ```
@@ -131,8 +135,8 @@ parameters := (identifier ':' type ('=' expr)?)? (',' identifier ':' type ('=' e
 Example:
 
 ```sesi
-fn add(a: number, b: number) {print a + b}
-fn greet(name: string = "World") {print "Hello," name}
+fn add(a: number, b: number) {show a + b}
+fn greet(name: string = "World") {show "Hello," name}
 ```
 
 #### Import/Export
@@ -149,7 +153,7 @@ Example:
 allow "math" in with {
   add, subtract
 }
-export fn multiply(a, b) {print a * b}
+export fn multiply(a, b) {show a * b}
 ```
 
 ### 4.4 Control Flow
@@ -183,11 +187,13 @@ continue_stmt := 'continue'
 Example:
 
 ```sesi
-for i = 0 to 10 {print i}
-try
-{let result = "Hello"
+for i = 0 to 10 {show i}
+
+try {
+  let result = "Hello"
 } catch (e) {
-print e}
+  show e
+}
 ```
 
 ### 4.5 Expressions
@@ -243,8 +249,8 @@ make Person {
 }
 
 let ada = Person("Ada")
-print ada.kind
-print ada.greet()
+show ada.kind
+show ada.greet()
 ```
 
 #### Function Call
@@ -289,6 +295,7 @@ config_entry := (STRING | identifier) ':' expression
 | `size`          | `image`          | `string`                  | `"512"`, `"1K"`, `"2K"`, `"4K"`                                            |
 | `images`        | `model`, `image` | `string \| array<string>` | Local file path(s) passed as visual input                                  |
 | `stream`        | `model`          | `bool \| fn`              | Enable real-time streaming to stdout (`true`) or a callback function       |
+| `system`        | `model`, `image` | `string`                  | Provider-native system instruction                                         |
 
 Example:
 
@@ -354,22 +361,36 @@ schema := '{' (identifier ':' type (',' identifier ':' type)*)? '}'
 Example:
 
 ```sesi
-let rawJson = "{\"projectName\": \"Sesi\", \"version\": \"1.7.0\", \"status\": \"active\"}"
+let rawJson = "{\"projectName\": \"Sesi\", \"version\": \"1.9.0\", \"status\": \"active\"}"
 let parsedRegistry = structured_output({projectName: string, version: string, status: string})(rawJson)
 ```
 
 #### Tool Call
 
-```
-tool_call := 'tool_call' '('function_name')' '('(model_call | expressions)?')'
-```
-
-Example (Native Sandboxed Dispatch):
+The `tool_call` expression allows native Sesi functions registered via `define_tool` to be invoked programmatically.
 
 ```sesi
-fn add(a: number, b: number) -> number { return a + b }
-let sum = tool_call(add)(10, 20)
+// 1. Define the native Sesi function
+fn calculateTax(amount: number, rate: number) -> number { return amount * rate }
+
+// 2. Register the function as a tool
+define_tool("calculateTax", calculateTax, "Calculate tax based on amount and rate")
+
+// 3. Invoke the tool programmatically
+let taxAmount = tool_call(calculateTax)(100, 0.08)
 ```
+
+The tool invocation is synchronous and executes the registered function within the current interpreter context. This mechanism can be used by AI agents to perform side-effects, but it functions independently as a core language primitive.
+
+Registered functions can also be orchestrated automatically by a model call:
+
+```sesi
+let answer = model("gemini-3.6-flash") {tools: list_tools(), max_tool_calls: 4} {"What is 8% tax on $125?"}
+```
+
+`tools` accepts registered tool names, registered function values, provider schemas, or `true` for every registered tool. For registered tools, Sesi derives parameter schemas from type annotations, maps model-supplied named arguments to function parameters, executes the function, and resumes the model with the result. This repeats until the model returns text. `max_tool_calls` defaults to `8`; exceeding it raises a runtime error. Automated calls to sensitive system functions remain forbidden.
+
+
 
 #### Pipe Operator
 
@@ -387,6 +408,10 @@ fn double(x) { return x * 2 }
 
 let result = 5 | increment | double // evaluates to 12
 ```
+_Rule of Thumb:_
+> Use | for data pipelines: arrays, strings, objects, or multi-step transformations (data | filter | map | show).
+
+> Use standard syntax () for math, boolean logic (!, &&, ||), comparisons (==, !=), and inline checks.
 
 #### Memory (State Management)
 
@@ -403,6 +428,15 @@ let response = model("gemini-3-flash-preview") {conversation "New question: "use
 conversation = conversation + "Assistant:" + response
 ```
 
+Memory bindings automatically compact after an update when their estimated token count exceeds the configured budget. Older content is summarized while a recent tail remains verbatim:
+
+```sesi
+memory conversation {"System: Preserve project decisions."}
+memory_config("conversation", {"max_tokens": 8000, "target_tokens": 4800, "summary_model": "gemini-3.5-flash-lite"})
+```
+
+`max_tokens` defaults to `900000`, `target_tokens` defaults to 60% of that limit, and automatic summarization is enabled by default. A failed summary leaves the original memory unchanged. `memory_trim()` remains available for explicit compaction.
+
 ### 4.6 Type Annotations
 
 ```
@@ -414,6 +448,13 @@ optional_type := type '?'
 ```
 
 **Type aliases:** `num` is an alias for `number`, `str` is an alias for `string`, and `any` accepts any value. These can be used interchangeably in function signatures, variable annotations, and return types.
+
+Variable annotations go between the variable name and `=`. They are optional, so either of these declarations is valid:
+
+```sesi
+let total: number = 42
+let label = "draft"
+```
 
 ## 5. Expression Evaluation Rules
 
@@ -483,7 +524,7 @@ In `"auto"` mode, Sesi uses the requested image viewer for image extensions, the
 ## 8. Built-in Functions
 
 ```
-print(any)                    // Output to stdout
+show(any)                    // Output to stdout
 debug()                       // Pauses and opens interactive REPL debugger
 len(array | string | object)  // Length
 range(number) -> array        // [0, 1, ..., n-1]
@@ -499,7 +540,26 @@ append(array|string, any)     // Append to array or concatenate to string
 pop(array) -> any             // Remove last
 join(array, string) -> string // Join with separator
 split(string, string) -> array // Split by separator
-tokenize(string, object?) -> array // Model tokenization (OpenAI-compatible tiktoken-style)
+regex(string, string, string|object?) -> array|bool|string // Regular-expression operations
+tokenize(string, string|object?) -> array // Local OpenAI-compatible token IDs
+count_tokens(string, string|object?) -> number // Native OpenAI/Gemini request count
+estimate_tokens(string, string|object?) -> number // Explicit local approximation
+estimate_cost(string, number|string, number|string?, object?) -> object // Token cost estimate
+model_usage() -> object|null   // Latest provider-reported usage and estimated cost
+gif(string|array, string, object?) -> string // FFmpeg-backed animated GIF creation
+video(string) {object?} {expression} -> string // AI video generation; returns Base64 MP4
+video(string|array, string, object?) -> string // FFmpeg-backed video creation/transcoding overload
+ffmpeg(array, object?) -> object // Structured raw FFmpeg invocation
+matrix_dot(array, array) -> array // Native rectangular matrix multiplication
+matrix_transpose(array) -> array // Native matrix transpose
+matrix_add(array, array) -> array // Native addition with single-row bias broadcasting
+matrix_sub(array, array) -> array // Native same-shape subtraction
+matrix_mul_elements(array, array) -> array // Native elementwise multiplication
+matrix_scale(array, number) -> array // Native scalar multiplication
+matrix_sigmoid(array) -> array // Native elementwise sigmoid
+matrix_dsigmoid(array) -> array // Native sigmoid-output derivative
+matrix_sum_rows(array) -> array // Native column sums as a single-row matrix
+matrix_mse(array, array) -> number // Native mean squared error
 to_upper(string) -> string       // Convert to uppercase
 to_lower(string) -> string       // Convert to lowercase
 trim(string) -> string        // Trim whitespace
@@ -512,7 +572,16 @@ filter(array, fn) -> array    // Filter array elements
 reduce(array, fn, any?) -> any // Accumulate array elements
 find(array, fn) -> any        // Find matching element
 retry(fn, number | object) -> any // Execute function with retry and backoff
+lazy(fn, ...args) -> lazy     // Create a memoized delayed computation
+force(any) -> any             // Resolve lazy values and promises
+timeout(fn, number, any?) -> any // Run function with millisecond deadline
+profile(string, fn) -> any    // Measure function runtime and return its result
+profile_start(string) -> string // Begin manual profiling section
+profile_end(string) -> object // End manual profiling section
+profile_report(string?) -> array | string // Return profiler measurements
 read_file(string, string?) -> string    // Read file contents (text or base64)
+encrypt(string, string) -> string       // AES-256-CBC encrypt UTF-8 string content
+decrypt(string, string) -> string       // AES-256-CBC decrypt iv:ciphertext content
 write_file(string, string) -> bool // Write file contents
 append_file(string, string) -> bool // Append string content to file
 write_image(string, string) -> bool // Write base64 image data to file
@@ -522,6 +591,10 @@ list_dir(string) -> array<string> // List directory contents
 make_dir(string) -> bool          // Create directory (recursive)
 spawn(string) -> number           // Concurrent process creation
 exec(string) -> string            // Synchronous shell execution
+run(string) -> string             // Exact alias of exec
+get_ext(string) -> string         // Lowercase extension without a dot
+exists(string) -> bool            // Sandbox-aware path existence check
+zip(source, destination?, operation?) // Create, list, or extract archives
 sesi(string, bool?, bool?) -> string // Synchronous in-process Sesi execution or compile check
 python(string, args) -> string    // Inline Python code execution
 js(strings, args) -> string       // In-proccess Javascript execution
@@ -530,6 +603,7 @@ random() -> number                // Random float (0.0 to 1.0)
 trunc(value, number?) -> any      // Truncate number (integer part) or string (char limit)
 convert() -> bool                 // Convert between formats
 memory_search(string, string, number?) -> array // Semantic similarity search over memory entries
+memory_config(string, object?) -> object        // Configure automatic memory summarization
 memory_trim(string, number?) -> string          // Context window management with auto-summarization
 ```
 
@@ -545,8 +619,8 @@ Runtime module execution and standard library modules are fully implemented and 
 
 ```sesi
 // math.sesi
-export fn add(a, b) {print a + b}
-export fn multiply(a, b) {print a * b}
+export fn add(a, b) {show a + b}
+export fn multiply(a, b) {show a * b}
 export let PI = 3.14159
 ```
 
@@ -564,7 +638,7 @@ import {
 let result = add(10, 20)
 
 // Option 2: allow module to bind under a scoped library namespace
-allow "math" in with Math
+allow "math" in as Math
 let result = Math.add(10, 20)
 
 // Option 3: allow module to bind specific names directly
@@ -577,15 +651,19 @@ let result = add(10, 20)
 ### Built-in Standard Library Modules
 
 ```sesi
-allow "std/time" in with Time    // Time/date functions
-allow "std/math" in with Math    // Math operations
-allow "std/json" in with JSON    // JSON parsing
-allow "std/draw" in with Draw    // SVG/Pixel creation
-allow "std/audio" in with Audio  // Audio synthesis
-allow "std/theory" in with Music   // Music Theory
-allow "std/terminal" in with Term  // Terminal options
-allow "std/base64" in with Base64 // Base64 encode/decode
+allow "std/time" in as Time    // Time/date functions
+allow "std/math" in as Math    // Math operations
+// JSON conversion uses the built-in from_json and to_json functions.
+allow "std/draw" in as Draw    // SVG/Pixel creation
+allow "std/audio" in as Audio  // Audio synthesis
+allow "std/theory" in as Music   // Music Theory
+allow "std/terminal" in as Term  // Terminal options
+allow "std/base64" in as Base64 // Base64 encode/decode
+allow "std/api" in as API       // FastAPI-style HTTP API framework
+allow "std/game" in as Game     // Babylon-powered 3D desktop games (optional package)
 ```
+
+`std/game` is an imperative native-object module. Member reads and writes on its handles are dispatched through guarded native hooks in both execution engines. Handles preserve identity, enumerate only allowlisted properties, reject protected prototype names, and raise typed errors for disposed, read-only, or cross-scene access. Development execution and desktop builds require `-l`; the optional runtime is installed with `npm install @misterscan/sesi-game`. See [`getting-started/GAME.md`](../getting-started/GAME.md).
 
 ### Module Resolution Order (v1.x)
 
@@ -623,7 +701,7 @@ allow "mymodule" in with {
   function2,
   function3
 }
-allow "another-module" in with Name
+allow "another-module" in as Name
 ```
 
 ### Custom Library Paths: `SESI_PATH`
@@ -663,11 +741,11 @@ Model calls can take optional configuration parameters (written on a single line
 ```sesi
 // Model call with native thinking effort level
 let response = model("gemini-3.6-flash") {thinkingLevel: "low"} {"Say hello"}
-print response  // Returns string
+show response  // Returns string
 
 let logo = image("gemini-3.1-flash-image") {ratio: "1:1", size: "512"} {"A vector logo"}
 write_image("logo.png", logo)
-print "Image written to logo.png"
+show "Image written to logo.png"
 ```
 
 #### Config Block Options:
@@ -688,7 +766,7 @@ Sesi provides built-ins for spoken output, transcription, and translation.
 speech("Analysis complete")
 let transcript = from_speech("interview.wav", "en")
 let spanish = translate(transcript, "es", "en")
-print spanish
+show spanish
 ```
 
 - `speech(text, voice = null, gemini_model = null)` speaks through the operating system's local voice tool, or uses the optional Gemini model.
@@ -700,17 +778,26 @@ print spanish
 ```sesi
 let result = structured_output({title: string, category: string, confidence: number})
 (model("gemini-3.5-flash-lite") {"Extract metadata from this text: "text})
-print result["title"]       // Access fields
-print result["confidence"]  // Type-safe access
+show result["title"]       // Access fields
+show result["confidence"]  // Type-safe access
 ```
 
 ### Reasoning with Tool Calling
 
+While `tool_call()` is a core language feature, it is the primary interface for AI agents to interact with your Sesi scripts. When an agent is given access to tools, it can decide to invoke them based on its reasoning process.
+
 ```sesi
-fn calculateTax(amount: number, rate: number) {print amount * rate}
-let taxAmount = tool_call(calculateTax)(model("gemini-3.5-flash-lite") {"Calculate 8% tax on $100"})
-taxAmount
+fn calculateTax(amount: number, rate: number) -> number { return amount * rate }
+
+// Register as a tool
+define_tool("calculateTax", calculateTax, "Calculate tax based on amount and rate")
+
+// Agent-driven usage:
+// The model decides to invoke 'calculateTax' with specific parameters
+let taxAmount = tool_call(calculateTax)(model("gemini-3.5-flash-lite") {"Extract tax amount and rate from text"}, 0.08)
 ```
+
+
 
 ### Reasoning with Memory
 
@@ -730,7 +817,7 @@ fn askQuestion(question: string) {
 ```sesi
 let x = 10
 let y = 20
-print x + y  // Output: 30
+show x + y  // Output: 30
 ```
 
 ### Example 2: Function with Reasoning
@@ -738,7 +825,7 @@ print x + y  // Output: 30
 ```sesi
 let text = "Reasoning is transforming industries!"
 fn analyzeText(text: string) -> string {return model("gemini-3.6-flash") {thinkingLevel: "low"} {"Analyze this text and return key insights: "text}}
-print analyzeText()
+show analyzeText()
 ```
 
 ### Example 3: Reasoning with Structured Output
@@ -746,8 +833,8 @@ print analyzeText()
 ```sesi
 let userInput = "I love working with Sesi!"
 let sentiment = structured_output({label: string, score: number})(model("gemini-3-flash-preview") {"Analyze sentiment of: "userInput})
-print sentiment.label
-print sentiment.score
+show sentiment.label
+show sentiment.score
 ```
 
 ## 12. Undefined Behavior & Limitations
@@ -762,6 +849,6 @@ print sentiment.score
 
 ## 13. Compatibility Notes
 
-- Sesi programs run on Node.js 20+
+- Sesi programs run on Node.js 20+, using local models relies on Node.js 22+
 - Requires `@google/genai` SDK v2.0.1+
 - Requires valid Gemini API key (GEMINI_API_KEY env var)

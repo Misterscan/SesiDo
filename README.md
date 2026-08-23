@@ -13,7 +13,7 @@
 - **Sesi-Native Orchestration**: Built on the Sesi language for minimal boilerplate and high-performance AI integration.
 - **Modular Helper Suite**: A robust collection of utilities in `helpers/` for file operations, git automation, and SVG generation.
 - **Reasoning-First**: Native primitives for model calls, structured output, and memory management.
-- **Asset Generation**: Built-in workflows for generated code, images, SVGs, and rendered pixel art.
+- **Asset Generation**: Built-in workflows for generated code, images, videos, SVGs, and rendered pixel art.
 - **Extensible**: Easily add custom tools and workflows to your agent's cognitive stack.
 
 ## Installation
@@ -69,6 +69,7 @@ allow "SesiDo" in with SesiDo // That's it! This single line imports SesiDo and 
    let avatar = SesiDo.drawPixelArt("SesiDo avatar, neon themed")
    let research = SesiDo.research("Common coding language patterns")
    let image = SesiDo.generateImage("product icon, colorful background")
+   let video = SesiDo.generateVideo({"query": "city skyline at dusk", "duration": 4, "negative": "no captions or logos"})
 */
 ```
 
@@ -108,7 +109,7 @@ export fn settings(){
    thinkingLevel: " reasoningLevel "
    ============================
    "}
-   print log
+   show log
 }
 
 /*
@@ -130,15 +131,15 @@ The output of Custom.settings() should look like:
 ```bash
 ====== CURRENT SETTINGS ======
 
-Current Time: 7/30/2026
-- Filenames saved with a timestamp will look like: test-20260704161145.txt
+Current Time: 8/23/2026
+- Filenames saved with a timestamp will look like: test-20260823121134.txt
 Available aliases:
- ["SesiDo", "SesiDo-Heavy", "SesiDo-Pro", "SesiDo-Lite", "SesiDo-Lite-Power", "SesiDo-Flash", "SesiDo-Image", "SesiDo-Image-Lite", "SesiDo-GPT", "SesiDo-GPT-Pro", "SesiDo-GPT-Lite", "SesiDo-GPT-Image"]
+ ["SesiDo", "SesiDo-Exp", "SesiDo-Pro", "SesiDo-Lite", "SesiDo-Lite-Power", "SesiDo-Flash", "SesiDo-Image", "SesiDo-Image-Lite", "SesiDo-Video", "SesiDo-GPT", "SesiDo-GPT-Pro", "SesiDo-GPT-Lite", "SesiDo-GPT-Image"]
 Available models:
- ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-image-2"]
+ ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image", "veo-3.1-lite-generate-preview", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-image-2"]
 
 Current alias: SesiDo
-Using model: gemini-3.6-flash
+Using model: gemini-3.7-flash
 temperature: 0.5
 search is active
 thinkingLevel: "low"
@@ -161,6 +162,7 @@ Now you're ready to use SesiDo!
 | `drawPixelArt`  | `{"description": "..."}`               | Generates and renders pixel art.                                |
 | `drawImage`     | `{"description": "..."}`               | Generates and renders an image.                                 |
 | `generateImage` | `{"query": "..."}`                     | Generates an image.                                             |
+| `generateVideo` | `{"query": "...", "duration": 4, "negative": "..."}` | Generates and verifies an MP4 video.                 |
 | `getImageInfo`  | `{"path": "..."}`                      | Analyzes an image.                                              |
 | `browsePage`    | `{"url": "...", "operation": "fetch"}` | Fetches, extracts, researches, analyzes, or screenshots a page. |
 
@@ -174,6 +176,7 @@ The repository includes standalone wrappers for manually running the same workfl
 | ---------------------------------- | ------------------------------------------------------ |
 | `npm run gen:code "prompt"`        | Generate a code response.                              |
 | `npm run gen:image "prompt"`       | Generate an image.                                     |
+| `npm run gen:video "prompt" 4 "no captions or logos"` | Generate a video.                         |
 | `npm run gen:pixel "prompt"`       | Generate and render pixel art.                         |
 | `npm run draw:image "prompt"`      | Generate and render an image.                          |
 | `npm run gen:svg "prompt"`         | Generate and render an SVG.                            |
@@ -195,14 +198,15 @@ The module registers these aliases from `index.sesi` when it is imported.
 
 | Alias               | Configured model              |
 | ------------------- | ----------------------------- |
-| `SesiDo`            | `gemini-3.6-flash`            |
-| `SesiDo-Heavy`      | `gemini-3.5-flash`            |
+| `SesiDo`            | `gemini-3.7-flash`            |
+| `SesiDo-Exp`        | `gemini-3.6-flash`            |
 | `SesiDo-Pro`        | `gemini-3.1-pro-preview`      |
 | `SesiDo-Lite`       | `gemini-3.1-flash-lite`       |
 | `SesiDo-Lite-Power` | `gemini-3.5-flash-lite`       |
 | `SesiDo-Flash`      | `gemini-3-flash-preview`      |
 | `SesiDo-Image`      | `gemini-3.1-flash-image`      |
 | `SesiDo-Image-Lite` | `gemini-3.1-flash-lite-image` |
+| `SesiDo-Video`      | `veo-3.1-lite-generate-preview` |
 | `SesiDo-GPT`        | `gpt-5.6-terra`               |
 | `SesiDo-GPT-Pro`    | `gpt-5.6-sol`                 |
 | `SesiDo-GPT-Lite`   | `gpt-5.6-luna`                |

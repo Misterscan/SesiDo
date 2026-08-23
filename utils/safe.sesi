@@ -59,6 +59,22 @@ export fn writeImage(path: str, content: str) -> bool {
     }
     return success
 }
+
+export fn saveMedia(path: string, content: string) -> any {
+    if exists(path) {
+        show "[SesiDo]: File already exists at:" path
+        return false
+    }
+    try {
+        write_file(path, content, "base64")
+        return true
+    } catch (err) {
+        show "[SesiDo]: Failed to save media at:" path
+        show "Details:" err
+        return false
+    }
+}
+
 export fn appendFile(path: str, content: str) -> bool {
   let success = false
   let attempts = 0
@@ -90,6 +106,33 @@ export fn moveFile(path: str, dest: str) -> bool {
     }
   }
   return success
+}
+
+export fn extension(path: str) -> str? {
+  let result = ""
+  let success = false
+  let attempts = 0
+  while !success && attempts < 3 {
+    try {
+      result = get_ext(path)
+      success = true
+    } catch (err) {
+      show "[SesiDo]: Failed to get extension for:" path
+      show "Details:" err
+      attempts = attempts + 1
+      Time.sleep(100)
+    }
+  }
+  return result
+}
+
+
+export fn tempFile(filename: string, content: string, ext: string) {
+  return writeFile(filename + "_temp." + ext, content)
+}
+
+export fn tempMedia(filename: string, content: string, ext: string) {
+  return writeFile(filename + "_temp." + ext, content, "base64")
 }
 
 // Get working directory

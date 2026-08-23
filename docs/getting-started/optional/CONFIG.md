@@ -14,7 +14,7 @@ config_block := '{' key ':' value (',' key ':' value)* '}'
 
 ```sesi
 let response = model("gemini-3.5-flash") {"Say hello"}
-print response
+show response
 ```
 
 ---
@@ -28,10 +28,76 @@ print response
 | `images`        | `string \| array<string>` | Local file path(s) for vision input                          |
 | `stream`        | `bool \| fn`              | Stream output to stdout (`true`) or a callback fn            |
 | `cache`         | `bool`                    | Set to `false` to bypass Sesi Logic Caching                  |
+| `system`        | `string`                  | System instruction for Gemini, GPT, and local models         |
 | `search`        | _(no value)_              | Enable web search grounding for real-time information        |
 | `temperature`   | `number`                  | ⚠️ Deprecated in Gemini 3.5+. Use `thinkingLevel`.           |
 | `top_k`         | `number`                  | ⚠️ Deprecated in Gemini 3.5+. Use `thinkingLevel`.           |
 | `top_p`         | `number`                  | ⚠️ Deprecated in Gemini 3.5+. Use `thinkingLevel`.           |
+| `tools`         | `array<object>`           | Function schemas exposed to models with tool-aware templates |
+
+---
+
+## Local Models
+
+Use `"local"` to run the default quantized instruction model directly:
+
+```sesi
+let answer = model("local") {max_tokens: 256, temperature: 0.3} {"Explain closures simply."}
+```
+
+The first call downloads the ONNX weights to `~/.cache/sesi/models`. The loaded
+pipeline is reused for later calls in the same process, and downloaded weights
+are reused across processes.
+
+Configure the provider with environment variables:
+
+| Variable                   | Default                                         |
+| -------------------------- | ----------------------------------------------- |
+| `SESI_LOCAL_MODEL`         | `onnx-community/Qwen2.5-0.5B-Instruct`          |
+| `SESI_LOCAL_DTYPE`         | `q4`                                            |
+| `SESI_LOCAL_DEVICE`        | `cpu`                                           |
+| `SESI_LOCAL_CACHE_DIR`     | `~/.cache/sesi/models`                          |
+| `SESI_LOCAL_SYSTEM_PROMPT` | Sesi's concise local-assistant system prompt    |
+| `SESI_LOCAL_WARN_TOKENS`   | `2048`                                          |
+
+An explicit model can also be selected in the model name:
+
+```sesi
+let answer = model("local:onnx-community/Qwen3-0.6B-ONNX") {"Say hello."}
+```
+
+Local calls support text generation, streaming, logic caching, token usage, and
+tool calling for models whose chat templates support tools. Images, audio, and
+search grounding are rejected with an explicit error. The `system` config key
+overrides `SESI_LOCAL_SYSTEM_PROMPT` for one call.
+
+```sesi
+let tools = [{
+  "type": "function",
+  "function": {
+    "name": "lookup_weather",
+    "description": "Get weather by city",
+    "parameters": {
+      "type": "object",
+      "properties": {"city": {"type": "string"}},
+      "required": ["city"]
+    }
+  }
+}]
+
+let call = model("local:onnx-community/Qwen3-0.6B-ONNX") {tools: tools} {"Use lookup_weather for New York City."}
+```
+
+When the model requests a tool, Sesi returns canonical JSON containing `name`,
+`args`, and an optional `call_id`, matching hosted-model behavior.
+
+Inputs above 2,048 tokens are allowed but emit a CPU-performance warning. See
+[Local Models](../../docs/LOCAL_MODELS.md) for context limits, configuration,
+and a reference benchmark.
+
+```sesi
+model("local") {max_tokens: 256, temperature: 0.5, system: "Use the tone of a motivational speaker that doesn't let clients give up on their tasks."} {query}
+```
 
 ---
 
@@ -85,19 +151,19 @@ Stream tokens as they arrive instead of waiting for the full response.
 ```sesi
 let response = model("gemini-3.1-flash-lite") {stream: true} {"Write a short poem."}
 
-// tokens print to terminal in real-time
-print "Final:" response
+// tokens show to terminal in real-time
+show "Final:" response
 ```
 
 ### To a callback function
 
 ```sesi
 fn handleChunk(chunk) {
-  print "Chunk:" chunk
+  show "Chunk:" chunk
 }
 
 let response = model("gemini-3.1-flash-lite") {stream: handleChunk} {"Explain closures."}
-print "Final:" response
+show "Final:" response
 ```
 
 The return value is always the fully accumulated response string, regardless of whether streaming is on.
@@ -110,7 +176,7 @@ The return value is always the fully accumulated response string, regardless of 
 
 ```sesi
 let response = model("gemini-3.1-flash-lite") {search} {"What is the weather in Tokyo right now?"}
-print response
+show response
 ```
 
 Combine with other keys normally:
@@ -182,7 +248,7 @@ let r = model("gemini-3.5-flash") {images: "scan.png"} {"Transcribe all text."}
 let r = model("gemini-3.1-flash-lite") {stream: true} {"Write a poem."}
 
 // Streaming with callback
-fn onChunk(chunk) { print chunk }
+fn onChunk(chunk) { show chunk }
 let r = model("gemini-3.1-flash-lite") {stream: onChunk} {"Tell a story."}
 
 // No cache

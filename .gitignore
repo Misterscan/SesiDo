@@ -13,3 +13,5 @@ SesiDo/database/.agent/*-memory-block.md
 helpers/version-bump.sesi
 database/.agent/*-memory-block.md
 .env.keys
+sesi.json
+sesi_modules

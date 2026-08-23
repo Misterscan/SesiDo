@@ -14,7 +14,7 @@ Fetch a URL and return the response body as a string:
 
 ```sesi
 let response = web_get("https://jsonplaceholder.typicode.com/posts/1")
-print response
+show response
 ```
 
 Parse a JSON response with `from_json`:
@@ -22,7 +22,7 @@ Parse a JSON response with `from_json`:
 ```sesi
 let response = web_get("https://jsonplaceholder.typicode.com/posts/1")
 let post     = from_json(response)
-print post["title"]
+show post["title"]
 ```
 
 Pass custom headers as the second argument:
@@ -44,7 +44,7 @@ Send a POST request with a string body and return the response:
 ```sesi
 let payload  = to_json({"title": "Hello", "body": "From Sesi", "userId": 1})
 let response = web_send("https://jsonplaceholder.typicode.com/posts", payload)
-print response
+show response
 ```
 
 Set `Content-Type` when the API requires it:
@@ -67,9 +67,9 @@ Network calls throw on failure. Wrap them in `try/catch`:
 try {
   let response = web_get("https://api.example.com/data")
   let parsed   = from_json(response)
-  print parsed["status"]
+  show parsed["status"]
 } catch (err) {
-  print "Request failed:" err
+  show "Request failed:" err
 }
 ```
 
@@ -85,7 +85,7 @@ Start an HTTP server on a port. The `handler` function receives a request object
 
 ```sesi
 fn handleRequest(req) {
-  print req.method req.path
+  show req.method req.path
   return {"status": 200, "body": "Hello from Sesi!"}
 }
 
@@ -162,7 +162,7 @@ Start a WebSocket server. The `handler` receives a `client` controller and the i
 
 ```sesi
 fn handleMessage(client, msg) {
-  print "Received:" msg
+  show "Received:" msg
   client.send("Echo: " + msg)
 }
 
@@ -182,6 +182,56 @@ let ws = api(8989, handleMessage)
 ws.close()
 ```
 
+## High-level API Framework — `std/api`
+
+For building web APIs with automated Swagger documentation and OpenAPI specifications, Sesi provides the `std/api` module. It offers high-level FastAPI-style routing, request schema specification, global middlewares, and auto-generated graphical interactive docs.
+
+```sesi
+allow "std/api" in as API
+
+// Handler function for a route
+fn listUsers(req) {
+  return {"status": 200, "body": {"users": []}}
+}
+
+// Create the API app
+let app = API.create_app({
+  "title": "Users API",
+  "version": "1.0.0",
+  "description": "A user management API"
+})
+
+// Register routing using FastAPI/Express style
+app.get("/users", {
+  "summary": "List users",
+  "tags": ["Users"]
+}, listUsers)
+
+// Listen starts the server
+let server = app.listen(8080)
+```
+
+By default, this will host:
+- The Swagger UI interactive documentation at `http://localhost:8080/docs`
+- The raw OpenAPI 3.1 specification at `http://localhost:8080/openapi.json`
+
+### `std/api` Quick Reference
+
+| Method / Property | Description |
+| ----------------- | ----------- |
+| `API.create_app(config?)` | Instantiates a new API application. Config options: `title`, `version`, `description`, `base_path`. |
+| `app.get(path, schema?, handler)` | Registers a `GET` route. Schema can define `summary`, `description`, `tags`, etc. |
+| `app.post(path, schema?, handler)` | Registers a `POST` route. |
+| `app.put(path, schema?, handler)` | Registers a `PUT` route. |
+| `app.patch(path, schema?, handler)` | Registers a `PATCH` route. |
+| `app.delete(path, schema?, handler)`| Registers a `DELETE` route. |
+| `app.use(middleware)` | Registers a request middleware function `fn(req)`. |
+| `app.openapi()` | Returns the generated OpenAPI 3.1 specification object. |
+| `app.routes()` | Returns an array of registered route objects. |
+| `app.listen(port, options?)` | Starts the server. Options: `docs_path` (default: `"/docs"`), `openapi_path` (default: `"/openapi.json"`), `cors` (default: `true`), `cors_origin` (default: `"*"`). Returns an object with a `.close()` method. |
+
+---
+
 ## Browser Automation — `std/browser`
 
 For complex web pages that require rendering JavaScript, clicking buttons, filling forms, taking screenshots, or exporting to PDF, import the `std/browser` library. Sesi uses Playwright under the hood:
@@ -198,7 +248,7 @@ page.goto("https://example.com")
 
 // Get the page title
 let title = page.title()
-print "Title is:" title
+show "Title is:" title
 
 // Click a button/link
 page.click("a")
@@ -224,6 +274,10 @@ browser.close()
 
 > [!NOTE]
 > `std/browser` requires Sesi to run in local/unsafe mode (pass the `-l` or `--local` flag to `sesi`).
+> Sesi uses a Playwright-managed Chromium installation when available. Packaged
+> builds otherwise fall back to an installed Microsoft Edge, Google Chrome, or
+> Chromium executable. You can select one explicitly with
+> `Browser.launch({"executable_path": "/path/to/browser"})`.
 
 ---
 
@@ -257,12 +311,19 @@ fn onMsg(client, msg) { client.send("Echo: " + msg) }
 let ws = api(8989, onMsg)
 ws.close()
 
+// High-level API Framework
+allow "std/api" in as API
+let app = API.create_app({"title": "My API"})
+app.get("/hello", {"summary": "Say Hello"}, fn(req) { return {"status": 200, "body": {"message": "hello"}} })
+let server = app.listen(8080)
+server.close()
+
 // Browser Automation (requires -l)
 allow "std/browser" in with {launch}
 let browser = launch({"headless": true})
 let page = browser.newPage()
 page.goto("https://example.com")
-print page.title()
+show page.title()
 browser.close()
 ```
 

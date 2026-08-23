@@ -26,11 +26,23 @@ These tools form the bedrock of your environmental awareness and manipulation.
 - **Signature**: `fn write(path: string, content: string) -> bool`
 - **Schema**: `{"path": "string", "content": "string"}`
 
+### `temp`
+
+- **Description**: Creates a temporary file (supports both text and binary content). For binary content like media, set the `mode` to `"media"`. No need to append '_temp' to the title; the system handles it automatically.
+- **Signature**: `fn temp(title: string, content: string, ext: string, mode: string = "text") -> string`
+- **Schema**: `{"title": "string", "content": "string", "ext": "string", "mode": "string"}`
+
 ### `appendTo`
 
 - **Description**: Appends content to a specified path. Use this to record findings, generate code artifacts, or update project states.
 - **Signature**: `fn appendTo(path: string, content: string) -> bool`
 - **Schema**: `{"path": "string", "content": "string"}`
+
+### `extGet`
+
+- **Description**: Retrieves the file extension of a specified path.
+- **Signature**: `fn extGet(path: string) -> string`
+- **Schema**: `{"path": "string"}`
 
 ### `remove`
 
@@ -86,9 +98,9 @@ These tools form the bedrock of your environmental awareness and manipulation.
 
 ### `browsePage`
 
-- **Description**: Browse a web page and extract its content. Use this for data aggregation from external APIs or fetching remote resources.
-- **Signature**: `fn browsePage(url: string, operations: string) -> string`
-- **Schema**: `{"url": "string", "operations": "string"}`
+- **Description**: Browse a web page and extract its content. Use this for data aggregation from external APIs or fetching remote resources. Operations MUST be specified explicitly in the `operation` argument. Available: fetch, scrape, research, analyze, screenshot
+- **Signature**: `fn browsePage(url: string, operation: string) -> string`
+- **Schema**: `{"url": "string", "operation": "fetch|scrape|research|analyze|screenshot"}`
 
 ---
 
@@ -111,6 +123,12 @@ These tools form the bedrock of your environmental awareness and manipulation.
 - **Description**: Create an SVG image from a given prompt.
 - **Signature**: `fn createSVG(prompt: string) -> string`
 - **Schema**: `{"prompt": "string"}`
+
+### `generateVideo`
+
+- **Description**: Generate a video from a given prompt. You can specify the video length in seconds and add a negative prompt to exclude certain elements. Allowed durations are `4`, `6`, and `8` seconds.
+- **Signature**: `fn generateVideo(prompt: string, duration: number, negative: string) -> string`
+- **Schema**: `{"prompt": "string", "duration": "4|6|8", "negative": "string"}`
 
 ### `generateImage`
 
