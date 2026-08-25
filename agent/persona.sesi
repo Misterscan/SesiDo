@@ -13,11 +13,31 @@ export fn getAgentOptionalMD() -> string {return agentOptionalMD}
 export fn getAgentOtherMD() -> string {return agentOtherMD}
 export fn getAgentTools() -> string {return agentTools}
 
-// Agent voice
+/**
+  Agent voice management.
+
+  Fields:
+  - `active`: Indicates if the voice mode is active.
+  - `voiceOn`: Indicates if the voice is currently on.
+
+  Functions:
+  - `start(choice)`: Starts the voice mode with the given choice (`true` to enable, `false` to disable).
+  - `response(message)`: Handles the agent's voice response based on the current voice mode status.
+
+  Returns:
+  - None.
+*/
 make AgentVoice {
     let active = false
     let voiceOn = false
 
+    // Starts the voice mode with the given choice.
+    //
+    // Parameters:
+    // - `choice`: A boolean indicating whether to start the voice mode (true) or not (false).
+    //
+    // Returns:
+    // - None.
     fn start(self, choice) {
         self.voiceOn = choice == true
         if self.voiceOn {
@@ -27,6 +47,13 @@ make AgentVoice {
         }
     }
 
+    // Handles the agent's voice response.
+    //
+    // Parameters:
+    // - `message`: The message to be spoken by the agent.
+    //
+    // Returns:
+    // - None.
     fn response(self, message) {
         if self.voiceOn {
             show "[SesiDo]: Speaking response:" message

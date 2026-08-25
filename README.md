@@ -218,7 +218,6 @@ Override an alias from a consuming script with `SesiDo.setModel(alias, modelName
 
 - `index.sesi`: Importable SesiDo module and exported workflows.
 - `main.sesi`: Optional interactive chat wrapper.
-- `src/index.sesi`: Readable source for the core module.
 - `helpers/`: Reusable utility scripts.
 - `docs/`: Detailed documentation and specifications.
 - `agent/`: Agent configurations.

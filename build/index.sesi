@@ -1,81 +1,562 @@
-// SesiDo Engine
-// Imports
+/**
+  SesiDo Engine Initialization and Configuration
+
+  This file sets up the SesiDo environment, including directory structure, database connections,
+  session management, system instructions, tools, persona, and model configurations.
+
+  You should not modify this file unless you are familiar with the SesiDo engine and its configuration.
+*/
+
 allow "std/db" in as DB; allow "std/browser" in with{launch} allow "../agent/persona" in as Persona; allow "../agent/ledger/evidence" in as Evidence; allow "../agent/ledger/pixel-grid" in as PixelGrid; allow "../utils/safe" in as Safe; allow "../helpers/timestamp" in with{localTime, universalTime, formattedTime}
-// Variables
-let workspaceRoot = Safe.wsRoot+"SesiDo/"; let dbDir=workspaceRoot+"database/"; let artifactsDir=workspaceRoot+".artifacts/"; let logsDir=workspaceRoot+"logs/"; let codeDir=artifactsDir+"code/"; let imageDir=artifactsDir+"images/"; let videoDir=artifactsDir+"videos/"; let svgDir=artifactsDir+"svgs/"; let summaryDir=artifactsDir+"summaries/"; let researchDir=artifactsDir+"research/"; let browserDir=artifactsDir+"browser/"
+// SesiDo directory
+let workspaceRoot = Safe.wsRoot+"SesiDo/"; 
+// Subdirectories
+let dbDir=workspaceRoot+"database/"; let artifactsDir=workspaceRoot+".artifacts/"; let logsDir=workspaceRoot+"logs/"; let codeDir=artifactsDir+"code/"; let imageDir=artifactsDir+"images/"; let videoDir=artifactsDir+"videos/"; let svgDir=artifactsDir+"svgs/"; let summaryDir=artifactsDir+"summaries/"; let researchDir=artifactsDir+"research/"; let browserDir=artifactsDir+"browser/"
 // Make sure directories exist
 make_dir(dbDir); make_dir(dbDir+".agent/"); make_dir(artifactsDir); make_dir(logsDir); make_dir(codeDir); make_dir(imageDir); make_dir(videoDir); make_dir(svgDir); make_dir(summaryDir); make_dir(researchDir); make_dir(browserDir)
 // Database
 let db=DB.db_open(dbDir+"agent.db", "enter-your-super-secret-password-here"); let history=db.collection("history"); let sessions=db.collection("sessions"); let sessionLogPath=""
-// Current session ID and timestamps
-export let currentSessionId="default"; export let localTime=localTime("basic"); export let universalTime=universalTime(); export let formattedTime=formattedTime()
-// System instructions, tools, and persona
+// Current session ID: `default`
+export let currentSessionId="default"; 
+// Timestamps
+export let localTime=localTime("basic"); export let universalTime=universalTime(); export let formattedTime=formattedTime()
+// ChatGPT API key check
 let hasGPT = false; if !is_null(env("OPENAI_API_KEY")){hasGPT = true}
+// Persona and instructions
 let instructions=Persona.getSystemInstruction(); let toolsMD=Persona.getToolsMD(); let agentBasicsMD=Persona.getAgentBasicsMD(); let agentOptionalMD=Persona.getAgentOptionalMD(); let agentOtherMD=Persona.getAgentOtherMD(); let agentTools=Persona.getAgentTools()
+/**
+  Agent voice management.
+
+  Fields:
+  - `active`: Indicates if the voice mode is active.
+  - `voiceOn`: Indicates if the voice is currently on.
+
+  Functions:
+  - `start(choice)`: Starts the voice mode with the given choice (`true` to enable, `false` to disable).
+  - `response(message)`: Handles the agent's voice response based on the current voice mode status.
+
+  Returns:
+  - None.
+*/
 make AgentVoice{let voiceOn=false; fn start(self){self.voiceOn=false} fn toggle(self){if self.voiceOn{self.voiceOn=false; show "[SesiDo]: Voice mode disabled."}else{self.voiceOn=true; show "[SesiDo]: Voice mode enabled."; speech("Hello, I am Sey-see Do, your AI agent. How can I assist you today?")}} fn response(self, message){if self.voiceOn{message = split(split(message, "\n"), ". "); for line in message {if !includes(line, "/") && !includes(line, "-") || !includes(line, "_") {speech(line)}}} }}let agentVoice=AgentVoice()
+// SesiDo Model Configuration
 export let sesiDoModels = ["SesiDo", "SesiDo-Exp", "SesiDo-Pro", "SesiDo-Lite", "SesiDo-Lite-Power", "SesiDo-Flash", "SesiDo-Image", "SesiDo-Image-Lite", "SesiDo-Video", "SesiDo-GPT", "SesiDo-GPT-Pro", "SesiDo-GPT-Lite", "SesiDo-GPT-Image"]; export let ogNames = ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image", "veo-3.1-lite-generate-preview", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-image-2"]
+/**
+    Sets the model alias to the specified model name.
+
+ Parameters:
+ - `alias`: The alias for the model.
+ - `model_name`: The name of the model to set for the alias.
+
+ Returns:
+ - None.
+*/
 fn setModel(alias: str, model_name: str){if alias!=null{set_alias(alias, model_name)}else{set_alias(sesiDoModels[0], ogNames[0]); set_alias(sesiDoModels[1], ogNames[1]); set_alias(sesiDoModels[2], ogNames[2]); set_alias(sesiDoModels[3], ogNames[3]); set_alias(sesiDoModels[4], ogNames[4]); set_alias(sesiDoModels[5], ogNames[5]); set_alias(sesiDoModels[6], ogNames[6]); set_alias(sesiDoModels[7], ogNames[7]); set_alias(sesiDoModels[8], ogNames[8]); set_alias(sesiDoModels[9], ogNames[9]); set_alias(sesiDoModels[10], ogNames[10]); set_alias(sesiDoModels[11], ogNames[11]); set_alias(sesiDoModels[12], ogNames[12])}}
 // Temperature and thinking level settings
 export let minimalTemp=0.1; export let lowTemp=0.3; export let mediumTemp=0.5; export let highTemp=0.7; export let minimalThink="minimal"; export let lowThink="low"; export let mediumThink="medium"; export let highThink="high"; export let streamOutput=true; export let searchGoogle=true; export let square="1:1"; export let portrait="9:16"; export let landscape="16:9"; export let tv="4:3"; export let mini="512"; export let small="1K"; export let medium="2K"; export let large="4K"
-// Base brain from persona
+/**
+    Creates and returns the base brain memory object from the persona.
+
+ Parameters:
+ - None.
+
+ Returns:
+ - The base brain memory object containing system instructions, tools, agent basics, optional information, other information, and agent tools.
+*/
 fn get_base_brain(){prompt base_brain{"systemInstructions:" instructions "\ntoolsMD:" toolsMD "\nSesi Basics:" agentBasicsMD "\nSesi Optional:" agentOptionalMD "\nSesi Other:" agentOtherMD "\nAgent Tools:" agentTools "\nNote: The '" artifactsDir "' directory and its subdirectories already exists. Use it to save generated assets. Do not try to create it, only adding new subdirecties to it."} return base_brain}
+// Base brain from persona
 let brain=get_base_brain()
-// Load existing session or create new one
 setModel()
+/**
+    Loads an existing session or creates a new one if it doesn't exist.
+
+ Parameters:
+ - `sid`: The session ID to load.
+
+ Returns:
+ - None.
+*/
 fn loadSession(sid){currentSessionId=sid; let sessionDir=logsDir+sid+"/"; make_dir(sessionDir); sessionLogPath=sessionDir+"agent-"+formattedTime+".log"; let prevMessages=history.find({"sessionId":sid});let conversation=""; let history_start=0; if len(prevMessages)>40{history_start=len(prevMessages)-40}let history_index=history_start; while history_index<len(prevMessages){let msg=prevMessages[history_index]; let message_content=str(msg["content"]); if len(message_content)>8000{message_content=slice(message_content, 0, 8000)+" [truncated]"}conversation=conversation+msg["role"]+":"+message_content+"; "; history_index=history_index+1}let jsonRep={"stable_facts":[], "user_preferences":[], "project_state":[], "agent_identity":[], "style_preferences":[], "metaphors":[], "discard":[]}; let brainJson=model("SesiDo-Lite-Power"){"Summarize the durable memory from this conversation. Rules:\n- Keep only stable facts, user preferences, project identity, unresolved tasks, agent identity, style preferences, and useful metaphors.\n- agent_identity must contain only literal operational facts and boundaries.\n- Do not include metaphors in agent_identity. Put all figurative descriptions only in metaphors.\n- Do not preserve poetic phrasing unless explicitly labeled as style or metaphor.\n- Label metaphors as metaphors, not facts.\n- Put hallucinations, temporary task details, stale claims, unsupported claims, old names, and conversational filler in discard. Conversation:" conversation "\nReturn a JSON object with the following keys:\n" jsonRep}; let clean=swap(brainJson, "```json", ""); clean=swap(clean, "```", ""); brainJson=clean; let brainSummary=structured_output({stable_facts:str, user_preferences:str, project_state:str, agent_identity:str, style_preferences:str, metaphors:str, discard:str})(brainJson); show "[SesiDo]: Loaded session '" sid "' with " str(len(prevMessages))" previous messages."; let memoryBlock="SESSION MEMORY:\n\nStable facts: "+brainSummary["stable_facts"]+" User preferences: "+brainSummary["user_preferences"]+" Project state: "+brainSummary["project_state"]+" Agent identity: "+brainSummary["agent_identity"]+" Style preferences: "+brainSummary["style_preferences"]+" Metaphors: "+brainSummary["metaphors"]+"\n\nRules:\n- Metaphors are optional style references, not factual claims. Do not use them in ordinary greetings unless the user asks for expressive or philosophical language.\n- Do not mention the session memory to the user unless they ask about it.\n- Do not mention your tools or capabilities to the user unless they ask about them.\n- Focus on the user's goals and requests, and use your tools to assist them if required."; let fileAppend = null; fileAppend = Safe.appendFile(dbDir+".agent/"+sid+"-memory-block.md", memoryBlock+"\n-----\n"); if is_null(fileAppend) {fileAppend = Safe.writeFile(dbDir+".agent/"+sid+"-memory-block.md", memoryBlock+"\n-----\n")} brain=brain+memoryBlock; let existing=sessions.find({"id":sid}); if len(existing)==0{sessions.insert({"id":sid, "created":universalTime})}}
 loadSession("default")
 // String manipulation
+
+/**
+  Quote a string by escaping double quotes and wrapping it in double quotes.
+
+ Parameters:
+  - `s`: The string to quote.
+
+ Returns:
+  The quoted string.
+*/
 fn quote(s){let text=str(s); text=swap(text, "\"", "\\\""); return "\""+text+"\""}
+/**
+  Sanitize a string by removing or replacing certain characters and truncating it to a maximum length of 40 characters.
+
+ Parameters:
+  - `name`: The string to sanitize.
+
+ Returns:
+  The sanitized string.
+*/
 fn sanitize(name){let s=str(name); s=swap(s, "\n", ""); s=swap(s, " ", "_"); s=swap(s, "/", "-"); s=swap(s, "{", ""); s=swap(s, "}", ""); s=swap(s, ":", ""); s=swap(s, "\"", ""); s=swap(s, "'", ""); s=swap(s, "?", ""); s=swap(s, "*", ""); s=swap(s, "<", ""); s=swap(s, ">", ""); s=swap(s, "|", ""); if len(s)>40{s=slice(s, 0, 40)}return s}
 // Evidence is turn-local and silent. It is only enforced for requests whose requirements actually need tool-backed completion evidence.
 let activeLedger=Evidence.newLedger(); let activeRequirements={}; let evidenceEligible=false; let evidenceActive=false
+/**
+  Reset the evidence ledger and requirements for a new request.
+
+ Parameters:
+  - `request`: The request for which to reset evidence.
+
+ Returns:
+  None.
+*/
 fn resetEvidence(request){activeLedger=Evidence.newLedger(); activeRequirements=Evidence.requirementsFor(request); evidenceEligible=Evidence.requiresEvidence(activeRequirements); evidenceActive=false}
+/**
+  Record evidence for a tool-backed action if evidence is required and the tool is tracked.
+
+ Parameters:
+  - `tool_name`: The name of the tool used.
+  - `tool_args`: The arguments passed to the tool.
+  - `observation`: The observation made by the tool.
+
+ Returns:
+  None.
+*/
 fn recordEvidence(tool_name, tool_args, observation){if evidenceEligible&&Evidence.tracksTool(tool_name){evidenceActive=true; activeLedger=Evidence.observe(activeLedger, tool_name, observation, tool_args, activeRequirements)}}
+/**
+  Guard the final answer with evidence if evidence is active.
+
+ Parameters:
+  - `answer`: The answer to guard.
+
+ Returns:
+  The guarded answer if evidence is active, otherwise the original answer as a string.
+*/
 fn guardEvidence(answer){if !evidenceActive{return str(answer)}return Evidence.guardFinal(answer, activeLedger, activeRequirements)}
-// File system operations
+/**
+  Create a directory.
+
+  Parameters:
+  - `args`: An object containing the path of the directory to create, or a string representing the path.
+
+  Returns:
+  A success or error message as a string.
+*/
 fn newDir(args){let path=null; if type(args)=="object"{path=args["path"]}else{path=args}if path==null{return "Error: makeDir requires a path."}try{Safe.makeDir(path); return "Success: Directory created: "+path}catch(e){return "Error creating directory:"+str(e)}}
+/**
+  Read the content of a file.
+
+  Parameters:
+  - `args`: An object containing the path of the file to read, or a string representing the path.
+
+  Returns:
+  The content of the file if successful, otherwise an error message or null.
+*/
 fn read(args){let path=null; if type(args)=="object"{path=args["path"]}else{path=args}if path==null{return "Error: read requires a path."}let userInput=input("SesiDo Agent is trying to read file "+path+". Is this okay?: (y/n) "); if to_lower(trim(userInput))!="y"{return "Error: User rejected read request."} if to_lower(trim(userInput))=="y"{try{let content=Safe.readFile(path); if content!=null{return content}}catch(e){}return null}}
+/**
+  Write content to a file.
+
+  Parameters:
+  - `args`: An object containing the path of the file to write and the content to write.
+
+  Returns:
+  A success or error message as a string.
+*/
 fn write(args){let path=null; let content=null; if type(args)=="object"{path=args["path"]; content=args["content"]}if path==null||content==null{return "Error: write requires path and content."}let userInput=input("SesiDo Agent is trying to write to file "+path+". Is this okay?: (y/n) "); if to_lower(trim(userInput))!="y"{return "Error: User rejected write request."} if to_lower(trim(userInput))=="y"{try{Safe.writeFile(path, content); return "Success: Wrote to "+path}catch(e){return "Error writing file:"+str(e)}}}
+/**
+  Create a temporary file.
+
+  Parameters:
+  - `args`: An object containing the title, content, extension, and mode of the temporary file.
+
+  Returns:
+  A success or error message as a string.
+*/
 fn temp(args) {let title=null; let content=null; let ext=null;let path=null; let mode="text"; if type(args)=="object"{title=args["title"]; content=args["content"]; ext=args["ext"]; mode=args["mode"]}if (title|is_null)||(content|is_null)||(ext|is_null){return "Error: temp requires title, content, and ext. Example: \"title\": \"file_name\", \"content\": \"content goes in here\", \"ext\": \"sesi\""}path=title+"_temp."+ext; try {if mode=="media"{Safe.tempMedia(title, content, ext)}else{Safe.tempFile(title, content, ext)} return "Success: Wrote temp file to "+path} catch(e){return "Error writing temp file:"+str(e)}}
+/**
+  Get the extension of a file.
+
+  Parameters:
+  - `args`: An object containing the path of the file, or a string representing the path.
+
+  Returns:
+  The extension of the file as a string, or an error message if the path is invalid.
+*/
 fn extGet(args) {let path=null; if type(args)=="object"{path=args["path"]}else{path=args}if path|is_null{return "Error: extGet requires a path."}return Safe.extension(path)}
+/**
+  Remove a file.
+
+  Parameters:
+  - `args`: An object containing the path of the file to remove, or a string representing the path.
+
+  Returns:
+  A success or error message as a string.
+*/
 fn remove(args){let path=null; if type(args)=="object"{path=args["path"]}else{path=args}if path==null{return "Error: remove requires a path."}let userInput=input("SesiDo Agent is trying to remove file "+path+". Is this okay?: (y/n) "); if to_lower(trim(userInput))!="y"{return "Error: User rejected remove request."}if to_lower(trim(userInput))=="y"{prompt success{"Successfully removed "path}; prompt error{"Error removing "path}try {trash(path, false); return success}catch(e){return error+str(e)}}}
+/**
+  Move a file from a source path to a destination path.
+
+  Parameters:
+  - `args`: An object containing the source path and destination path, or an array with the source and destination paths.
+
+  Returns:
+  A success or error message as a string.
+*/
 fn move(args){let path=null; let dest=null; if type(args)=="object"{path=args["path"]; dest=args["destination"]}else if type(args)=="array"{path=args[0]; dest=args[1]}else{path=args}if path==null||dest==null{return "Error: move requires a source and destination."}let userInput=input("SesiDo Agent is trying to move "+path+" to "+dest+". Is this okay?: (y/n) "); if to_lower(trim(userInput))!="y"{return "Error: User rejected move request."}if to_lower(trim(userInput))=="y"{try{Safe.moveFile(path, dest); return "Success: Moved "+path+" to "+dest}catch(e){return "Error moving file:"+str(e)}}}
+/**
+  List the files in a directory.
+
+  Parameters:
+  - `args`: An object containing the path of the directory, or a string representing the path.
+
+  Returns:
+  An array of file names in the directory, or an error message if the path is invalid.
+*/
 fn list(args){let path=Safe.wsRoot; if type(args)=="object"{if args["path"]!=null{path=args["path"]}}else if args!=null{path=args}try{let files=list_dir(path); return files}catch(e){return "Error listing directory:"+str(e)}}
+/**
+  Append content to a file.
+
+  Parameters:
+  - `args`: An object containing the path of the file and the content to append.
+
+  Returns:
+  A success or error message as a string.
+*/
 fn appendTo(args){let path=null; let content=null; if type(args)=="object"{path=args["path"]; content=args["content"]}if path==null||content==null{return "Error: appendFile requires path and content."}try{Safe.appendFile(path, content); return "Success: Appended to "+path}catch(e){return "Error appending to file:"+str(e)}}
+/**
+  Run a Sesi script.
+
+  Parameters:
+  - `args`: An object containing the path of the Sesi script, or a string representing the path.
+
+  Returns:
+  A success or error message as a string.
+*/
 fn runSesi(args){let path=null; if type(args)=="object"{path=args["path"]}else{path=args}if path==null||path==""{return "Error: runSesi requires a path."}if len(path)<5||slice(to_lower(path), len(path)-5, len(path))!=".sesi"{return "Error: runSesi accepts only a .sesi script path."}let userInput=input("SesiDo Agent is trying to run Sesi script: "+path+". Is this okay?: (y/n) "); if to_lower(trim(userInput))!="y"{return "Error: User rejected run request."}try{let output=sesi(path, true); return "Success: runSesi executed "+path+".\n"+str(output)}catch(e){return "Execution error:"+str(e)}}
+/**
+  Safely run a command or a Sesi script.
+
+  Parameters:
+  - `args`: An object containing the command to run, or a string representing the command.
+
+  Returns:
+  The output of the command, or an error message if the execution fails.
+*/
 fn safeRun(args){let cmd=null; if type(args)=="object"{cmd=args["command"]; if cmd==null{cmd=args["cmd"]}}else{cmd=args}if cmd==null{return "Error: safeRun requires a command."}let userInput=input("SesiDo Agent is trying to run command: "+cmd+". Is this okay?: (y/n) "); if to_lower(trim(userInput))!="y"{return "Error: User rejected run request."}if to_lower(trim(userInput))=="y"{let output=cmd; try{output=exec(cmd); return output}catch(e){return "Execution error:"+str(e)}}}
+/**
+  Evaluate Sesi code.
+
+  Parameters:
+  - `args`: An object containing the code to evaluate, or a string representing the code.
+
+  Returns:
+  The result of the evaluation, or an error message if the execution fails.
+*/
 fn eval(args){let code=null; if type(args)=="object"{code=args["code"]}else{code=args}if code==null{return "Error: eval requires code."}let userInput = input("SesiDo Agent is trying to eval code: "+code+". Is this okay?: (y/n) "); if to_lower(trim(userInput))!="y"{return "Error: User rejected eval request."}if to_lower(trim(userInput))=="y"{try{let tempFile = "sesido-temp-eval.sesi"; Safe.writeFile(tempFile, code); let result=sesi(tempFile, true); trash(tempFile, true); return result}catch(e){return "Error evaluating code: "+str(e)}}}
+/**
+  Perform an HTTP GET request.
+
+  Parameters:
+  - `args`: An object containing the URL and optional headers, or a string representing the URL.
+
+  Returns:
+  The response from the HTTP GET request, or an error message if the request fails.
+*/
 fn httpGet(args){let url=null; let headers={}; if type(args)=="object"{url=args["url"]; if args["headers"]!=null{headers=args["headers"]}}else{url=args}if url==null{return "Error: httpGet requires a URL."}try{let response=web_get(url, headers); return response}catch(e){return "HTTP GET error:"+str(e)}}
+/**
+  Perform an HTTP SEND request.
+
+  Parameters:
+  - `args`: An object containing the URL, data, and optional headers.
+
+  Returns:
+  The response from the HTTP SEND request, or an error message if the request fails.
+*/
 fn httpSend(args){let url=null; let data=null; let headers={}; if type(args)=="object"{url=args["url"]; data=args["data"]; if args["headers"]!=null{headers=args["headers"]}}if url==null{return "Error: httpSend requires a URL."}try{let response=web_send(url, data, headers); return response}catch(e){return "HTTP SEND error:"+str(e)}}
-// SesiDo Agents
+// SesiDo Agents: Code Generation and Debugging
+/**
+  Write code based on a query or request description.
+
+  Parameters:
+  - `args`: An object containing the query, text, or description – or a string representing the query.
+
+  Returns:
+  The generated code as a string, or an error message if the generation fails.
+*/
 export fn writeCode(args){let query=null; if type(args)=="object"{if args["query"]!=null{query=args["query"]}else if args["text"]!=null{query=args["text"]}else if args["description"]!=null{query=args["description"]}}else{query=args}if(query==null||query=="")&&type(args)=="object"&&len(keys(args))==1{let firstKey=keys(args)[0]; query=args[firstKey]}if query==null||query==""{return "Error: writeCode requires a query or request description."}show "[SesiDo]: Writing code for:" query; let codeResponse=""; try{codeResponse=model("SesiDo-Pro"){thinkingLevel: mediumThink, temperature: lowTemp, system: brain}{"Write code for the following request (avoid verbatim recitation of large standard texts; paraphrase or draft custom versions if needed): " query}}catch(e){show "[SesiDo]: ⚠ Code generation failed(" str(e)"). Trying SesiDo-Flash..."; try{codeResponse=model("SesiDo-Flash"){thinkingLevel: mediumThink, temperature: mediumTemp, system: brain}{"Write code for: " query}}catch(e2){return "Code generation failed due to safety or technical blocks."}}let filename=codeDir+sanitize(query)+"-"+formattedTime+"-code.md"; Safe.writeFile(filename, codeResponse); show "[SesiDo]: Wrote code for" query "and saved to" codeDir "!"; return codeResponse}
+/**
+  Debug code in a specified file.
+
+  Parameters:
+  - `args`: An object containing the path to the code file or a query – or a string representing the query.
+
+  Returns:
+  The debugged code as a string, or an error message if the debugging fails.
+*/
 export fn debugCode(args){let targetFile=null; let query=null; if type(args)=="object"{if args["path"]!=null{targetFile=args["path"]}else if args["file"]!=null{targetFile=args["file"]}else if args["query"]!=null{query=args["query"]}}else{query=args}if targetFile==null&&query==null{show "[SesiDo]:Enter the path to the code file you want to debug..." targetFile=input("[You]: ")}else if targetFile==null&&query!=null{let words=split(query, " "); for w in words{if contains(w, ".")&&!contains(w, "search"){targetFile=w}}}if targetFile==null{return "No file specified for debugging."}let codeContent=Safe.readFile(targetFile); if codeContent==null{return "Failed to read file."}show "[SesiDo]: Debugging code in file:" targetFile; let preCode=model("SesiDo-Pro"){temperature: lowTemp, system: brain}{"Debug the following code and provide suggestions for improvements or fixes:" codeContent}; Safe.writeFile(codeDir+sanitize(targetFile)+"-"+formattedTime+"-pre-debug.md", preCode); let debugResponse=model("SesiDo-Lite"){temperature: mediumTemp}{brain " Apply the following debugging suggestions to the code in " targetFile " and provide the improved code:" preCode}; Safe.writeFile(codeDir+sanitize(targetFile)+"-"+formattedTime+"-debug.md", debugResponse); show "[SesiDo]: Debugged code in" targetFile "and saved results to" codeDir "!"; return debugResponse}
+// SesiDo Agents: Research and Summarization
+/**
+  Conduct research on a specified topic.
+
+  Parameters:
+  - `args`: An object containing the query or topic – or a string representing the query.
+
+  Returns:
+  The research findings as a string, or an error message if the research fails.
+*/
 export fn research(args){let query=null; if type(args)=="object"{if args["query"]!=null{query=args["query"]}else if args["topic"]!=null{query=args["topic"]}}else{query=args}if query==null||query==""{return "Error: research requires a query."}show "[SesiDo]: Conducting research on:" query; let researchResponse=""; try{researchResponse=model("SesiDo-Lite-Power"){thinkingLevel: mediumThink, search, system: brain}{"Research the following topic and provide a summary of findings (paraphrase sources to avoid recitation blocks) Must return:\n- sources_used: list of URLs or document paths\n- claims: 3 to 7 key claims\n- confidence: low|medium|high\n- unsupported/speculative claims: list\n- synthesis: final prose " query}}catch(e){show "[SesiDo]: ⚠ Research failed(" str(e)"). Retrying with SesiDo-Lite..."; try{researchResponse=model("SesiDo-Lite"){thinkingLevel: lowThink, temperature: lowTemp}{"Research:" query}}catch(e2){return "Research failed due to safety or technical blocks."}}let filename=researchDir+sanitize(query)+"-"+formattedTime+"-research.md"; Safe.writeFile(filename, researchResponse); show "[SesiDo]: Research completed on" query "and saved results to" researchDir "!"; return researchResponse}
+/**
+  Summarize a given text or the content of a specified file.
+
+  Parameters:
+  - `args`: An object containing the text, file path, or query – or a string representing the text.
+
+  Returns:
+  The summary as a string, or an error message if the summarization fails.
+*/
 export fn summarize(args){let text=null; if type(args)=="object"{if args["text"]!=null{text=args["text"]}else if args["path"]!=null{text=args["path"]}else if args["query"]!=null{text=args["query"]}}else{text=args}if text==null||text==""{return "Error: summarize requires text or a file path."}let query=text; if text==null||text==""{return "No text provided for summarization."}if len(text)<100&&contains(text, "."){let content=Safe.readFile(text); if content!=null{text=content}}show "[SesiDo]: Summarizing..."; let summaryResponse=""; try{summaryResponse=model("SesiDo-Lite-Power"){thinkingLevel: mediumThink, temperature: lowTemp, max_tokens: 1024, system: brain}{"Summarize the following text:" text}}catch(e){show "[SesiDo]: ⚠ Summarization failed(" str(e)"). Retrying with SesiDo-Lite..."; try{summaryResponse=model("SesiDo-Lite"){thinkingLevel: minimalThink, temperature: lowTemp}{"Summarize:" text}}catch(e2){return "Summarization failed due to safety or technical blocks."}}let filename=summaryDir+sanitize(query)+"-"+formattedTime+"-summary.md"; Safe.writeFile(filename, summaryResponse); show "[SesiDo]: Summarized text and saved summary to" summaryDir "!"; return summaryResponse}
+// SesiDo Agent: Calculation
+/**
+  Evaluate a mathematical expression.
+
+  Parameters:
+  - `args`: An object containing the expression or query – or a string representing the expression.
+
+  Returns:
+  The calculation result as a string, or an error message if the calculation fails.
+*/
 export fn calculator(args){let expression=null; if type(args)=="object"{if args["expression"]!=null{expression=args["expression"]}else if args["query"]!=null{expression=args["query"]}}else{expression=args}if expression==null||expression==""{return "Error: calculator requires a mathematical expression."}show "[SesiDo]: Calculating:" expression; let calcResponse=model("SesiDo-Flash"){thinkingLevel: minimalThink, temperature: minimalTemp, stream: streamOutput}{"Calculate the following expression and provide the result:" expression}; show calcResponse; return calcResponse}
+// SesiDo Agent: SVG Creation
+/**
+  Create an SVG based on a description or query.
+
+  Parameters:
+  - `args`: An object containing the query or description – or a string representing the query.
+
+  Returns:
+  The generated SVG as a string, or an error message if the creation fails.
+*/
 export fn createSVG(args){let query=null; if type(args)=="object"{if args["query"]!=null{query=args["query"]}else if args["description"]!=null{query=args["description"]}}else{query=args}if query==null||query==""{return "Error: createSVG requires a description."}show "[SesiDo]: Creating SVG for:" query; let svg_output_path=svgDir+sanitize(query)+"-"+formattedTime+".svg"; let svgResponse=false; svgResponse=model("SesiDo-Flash"){thinkingLevel: mediumThink, temperature: lowTemp}{"You are a Sesi programming language code generator.\nWrite a Sesi script using the 'std/draw' module to draw the SVG requested. The Sesi drawing API is:\n\n allow \"std/draw\" in as Draw\nDraw.clear()\n- Draw.circle(cx, cy, r, fill, options = {}) -- options keys: stroke, stroke-width, opacity, class, id\n- Draw.rect(x, y, w, h, fill, options = {}) options keys: rx, ry, opacity, class, id\n- Draw.line(x1, y1, x2, y2, stroke, options = {})\n- Draw.text(x, y, content, size, fill, options = {}) -- options keys: font-family, font-weight, opacity, class, id\n- Draw.ellipse(cx, cy, rx, ry, fill, options = {})\n- Draw.polygon(points_string, fill, options = {})\n- Draw.path(d_string, fill, options = {})\n- Draw.gradient(type, id, stops_array, options = {}) -- type is \"linear\" or \"radial\", stops_array is e.g. [{\"offset\": \"0%\", \"color\": \"red\"}, {\"offset\": \"100%\", \"color\": \"blue\"}]\n- Draw.style(cssText_string)\n- Draw.save_svg(output_path, width, height)\n -- \nsave output.\nRules:\n1. Always allow \"std/draw\" in as Draw at the beginning.\n2. Sesi does not use let or var or function definitions inside the drawing statements. Just call Draw functions.\n3. Make sure to call Draw.save_svg() at the end.\n4. Output ONLY the Sesi script code inside a ```sesi code block.\nUse this function to escape text for SVG before writing it to the SVG file: ```\nfn escapeSvgText(text){let s=str(text); s=swap(s, \"&\", \"&amp;\"); s=swap(s, \"<\", \"&lt;\"); s=swap(s, \">\", \"&gt;\"); s=swap(s, \"\"\", \"&quot;\"); s=swap(s, \"'\", \"&apos;\"); return s}\n```\nDo not write any explanations before or after.\nOutput path to use: " svg_output_path "\nRequest to draw: " query}; svgResponse=split(svgResponse, "```sesi")[1]; svgResponse=split(svgResponse, "```")[0]; let filename=codeDir+sanitize(query)+"-"+formattedTime+"-svg.sesi"; let wrote=Safe.writeFile(filename, svgResponse); let savedScript=Safe.readFile(filename); if !wrote||savedScript==null||savedScript==""{return "Error: SVG script was not saved and verified at "+filename}try{sesi(filename, true)}catch(e){return "Execution error rendering SVG: "+str(e)}let savedSvg=Safe.readFile(svg_output_path); if savedSvg==null||savedSvg==""{return "Error: SVG execution finished but output verification failed at "+svg_output_path}return "Success: SVG rendered. artifact_verified=true; output="+svg_output_path+"; script="+filename}
+// SesiDo Agent: Pixel Art Creation
+/**
+  Draw pixel art based on a description or query.
+
+  Parameters:
+  - `args`: An object containing the query or description – or a string representing the query.
+
+  Returns:
+  The generated pixel art as a PNG file, or an error message if the creation fails.
+*/
 export fn drawPixelArt(args){let query=null;if type(args)=="object"{if args["query"]!=null{query=args["query"]}else if args["description"]!=null{query=args["description"]}}else{query=args}if query==null||query==""{return "Error: drawPixelArt requires a description."}show "[SesiDo]: Creating pixel art for:" query; let png_output_path=imageDir+sanitize(query)+"-"+formattedTime+"-pixel-art.png"; let raw=model("SesiDo-Flash"){system: brain}{"Create a pixel-art specification as JSON only. Schema: {\"palette\":{\"token\":\"#RRGGBB or transparent\"},\"grid\":[[\"token\"]],\"scale\":integer,\"width\":integer,\"height\":integer,\"variations\":[{\"name\":\"short-name\",\"palette\":{\"used-token\":\"different color\"}}]}. Every grid row must have equal width. Every grid token must be a palette key. Use short string tokens. Include an empty variations array unless the request asks for variants; then each variation must change at least one palette token actually used in the grid. Request: " query}; raw=swap(raw, "```json", ""); raw=swap(raw, "```", ""); let spec=null; try{spec=from_json(trim(raw))}catch(e){return "Error: Pixel specification was not valid JSON: "+str(e)}let validation=PixelGrid.validate(spec, PixelGrid.requestsVariations(query)); if !validation["valid"]{return "Error: Pixel-grid validation failed: "+join(validation["errors"], "; ")}if len(validation["warnings"])>0{show "[SesiDo]: Pixel-grid warnings:" join(validation["warnings"], "; ")}let filename=codeDir+sanitize(query)+"-"+formattedTime+"-pixel-art.sesi"; let pixelArtResponse=PixelGrid.buildScript(spec, png_output_path); let wrote=Safe.writeFile(filename, pixelArtResponse); let savedScript=Safe.readFile(filename); if !wrote||savedScript==null||savedScript==""{return "Error: Pixel-art script was not saved and verified at "+filename}try{sesi(filename, true)}catch(e){return "Execution error rendering pixel art: "+str(e)}let savedPng=Safe.readFile(png_output_path); if savedPng==null||savedPng==""{return "Error: Pixel-art execution finished but output verification failed at "+png_output_path}let variations=spec["variations"]; let variation_outputs=[]; if variations!=null{let variation_index=0; for variation in variations{variation_index=variation_index+1; let variation_path=swap(png_output_path, ".png", "-"+PixelGrid.variationName(variation, variation_index)+".png"); let variation_script_path=swap(filename, ".sesi", "-"+PixelGrid.variationName(variation, variation_index)+".sesi"); let variation_script=PixelGrid.buildScript(spec, variation_path, variation["palette"]); let variation_wrote=Safe.writeFile(variation_script_path, variation_script); let savedVariationScript=Safe.readFile(variation_script_path); if !variation_wrote||savedVariationScript==null||savedVariationScript==""{return "Error: Variation script was not saved and verified at "+variation_script_path}try{sesi(variation_script_path, true)}catch(e){return "Execution error rendering pixel-art variation: "+str(e)}let savedVariation=Safe.readFile(variation_path); if savedVariation==null||savedVariation==""{return "Error: Variation output verification failed at "+variation_path}push(variation_outputs, variation_path)}}return "Success: Pixel art rendered. artifact_verified=true; output="+png_output_path+"; script="+filename+"; variations="+join(variation_outputs, ", ")+"; warnings="+join(validation["warnings"], "; ")}
+// SesiDo Agent: Pixel By Pixel Image Creation
+/**
+  Draw an image based on a description or query.
+
+  Parameters:
+  - `args`: An object containing the query or description – or a string representing the query.
+
+  Returns:
+  The generated image as a PNG file, or an error message if the creation fails.
+*/
 export fn drawImage(args){let query=null; if type(args)=="object"{if args["query"]!=null{query=args["query"]}else if args["description"]!=null{query=args["description"]}}else{query=args}if query==null||query==""{return "Error: drawImage requires a description."}let example=Safe.readFile(Safe.wsRoot+"sesi_modules/SesiDo/pixel_placeholder_icon_detailed.sesi"); let variableDocs=Safe.readFile(Safe.wsRoot+"sesi_modules/SesiDo/docs/getting-started/VARIABLES.md"); let functionDocs=Safe.readFile(Safe.wsRoot+"sesi_modules/SesiDo/docs/getting-started/FUNCTIONS.md"); if example==null||example==""{return "Error: drawImage reference script is unavailable."}let refs=to_json([example, variableDocs, functionDocs]); let baseName=sanitize(query)+"-"+formattedTime+"-image"; let scriptPath=codeDir+baseName+".sesi"; let outputPath=imageDir+baseName+".png"; let previousError=""; let attempt=0; show "[SesiDo]: Drawing image for:" query; while attempt<2{attempt=attempt+1; let sys="You generate executable Sesi code for raster PNG artwork. Use only Sesi syntax and the std/draw API demonstrated in the references. Never output Python, JavaScript, invented imports, prose, analysis, or pseudocode. The script must begin with allow \"std/draw\" in as Draw, may use normal multiline Sesi statements, and must end by calling Draw.save_png with the exact output path supplied. Output only one ```sesi code block. References: "+refs; let generationPrompt="User request: "+query+"\nExact PNG output path: "+outputPath+"\nDo not create directories and do not change the output path."; if previousError!=""{generationPrompt=generationPrompt+"\nThe previous generated script failed with this concrete error. Correct it: "+previousError}let response=""; try{if hasGPT{response=model("SesiDo-GPT"){thinking: mediumThink, system: sys, cache: true}{generationPrompt}}else{response=model("SesiDo-Flash"){thinking: mediumThink, system: sys, cache: true}{generationPrompt}}}catch(e){previousError="Model generation failed: "+str(e); continue}let code=trim(str(response)); if contains(code, "```sesi"){code=split(code, "```sesi")[1]; if contains(code, "```"){code=split(code, "```")[0]}}else if contains(code, "```"){code=split(code, "```")[1]; if contains(code, "```"){code=split(code, "```")[0]}}if contains(code, "allow \"std/draw\" in as Draw"){code="allow \"std/draw\" in as Draw"+split(code, "allow \"std/draw\" in as Draw")[1]}else{previousError="Generated response did not contain the required Sesi std/draw import."; continue}if !contains(code, "Draw.save_png")||!contains(code, outputPath){previousError="Generated script did not call Draw.save_png with the exact required output path."; continue}let wrote=Safe.writeFile(scriptPath, trim(code)); let savedScript=Safe.readFile(scriptPath); if !wrote||savedScript==null||savedScript==""{previousError="Generated Sesi script could not be saved and read back."; continue}try{sesi(scriptPath, true); let savedImage=Safe.readFile(outputPath); if savedImage==null||savedImage==""{previousError="Script executed but the PNG output was not created at "+outputPath; continue}let successMsg="Success: Image rendered. artifact_verified=true; output="+outputPath+"; script="+scriptPath; show "[SesiDo]:" successMsg; return successMsg}catch(e){previousError="Sesi execution failed: "+str(e)}}return "Error rendering image after two validated attempts: "+previousError}
+// SesiDo Agents: Media Generation
+/**
+  Generate an image based on a description or query.
+
+  Parameters:
+  - `args`: An object containing the query or prompt – or a string representing the query.
+
+  Returns:
+  The generated image as a PNG file, or an error message if the creation fails.
+*/
 export fn generateImage(args){let query=null; if type(args)=="object"{if args["query"]!=null{query=args["query"]}else if args["prompt"]!=null{query=args["prompt"]}}else{query=args}if query==null||query==""{return "Error: generateImage requires a prompt."}show "[SesiDo]: Generating image for:" query; let preImage=model("SesiDo-Lite"){thinkingLevel: lowThink, temperature: mediumTemp, max_tokens: 300, system: brain}{"Enhance this image request with verbosity and details:" query}; let imageResponse=""; if hasGPT {imageResponse = image("SesiDo-GPT-Image") {square, mediumTemp} {"Generate image for the following request: " preImage}} else {imageResponse = image("SesiDo-Image"){ratio: square, temperature: mediumTemp}{"Generate image for the following request:" preImage}} let filename=imageDir+sanitize(query)+"-"+formattedTime+"-image.png"; let wrote=Safe.writeImage(filename, imageResponse); let savedImage=Safe.readFile(filename); if !wrote||savedImage==null||savedImage==""{return "Error: Generated image was not saved and verified at "+filename}return "Success: Image generated. artifact_verified=true; output="+filename}
+/**
+  Generate a video based on a description or query.
+
+  Parameters:
+  - `args`: An object containing the query, duration, and negative prompt – or a string representing the query.
+
+  Returns:
+  The generated video as an MP4 file, or an error message if the creation fails.
+*/
 export fn generateVideo(args) {let query=null; let vidLength=null; let avoid=null; if type(args)=="object"{if args["query"]!=null{query=args["query"]}else if args["prompt"]!=null{query=args["prompt"]}if args["duration"]!=null{vidLength=args["duration"]|num}if args["negative"]!=null{avoid=args["negative"]}}if (query|is_null)||query==""||!(vidLength|is_number)||(vidLength|is_null)||vidLength==""||(avoid|is_null)||avoid==""{return "Error: generateVideo requires a prompt, duration, and negative prompt."}if vidLength!=2&&vidLength!=4&&vidLength!=6&&vidLength!=8{return "Error: generateVideo duration must be 2, 4, 6, or 8 seconds."}show "[SesiDo]: Generating video for:" query; let preVideo=model("SesiDo-Flash"){thinking: lowThink, temp: mediumTemp}{"Enhance this video prompt with rich detail and relevant context:\n"query"\n# What to avoid in your enhanced prompt:\n"avoid"\nMaintain user intent. Return only the enhanced prompt."}let videoResponse=video("SesiDo-Video"){duration: vidLength}{preVideo}let filename=videoDir+sanitize(query)+"-"+formattedTime+".mp4"; let wrote=Safe.saveMedia(filename, videoResponse); let savedVideo=exists(filename); if !wrote||savedVideo==false||savedVideo==""{return "Error: Generated video was not saved and verified at "+filename}let msg="Success: Video generated. artifact_verified=true; output="+filename; show "[SesiDo]:" msg; return msg}
+// SesiDo Agent: Image Metadata
+/**
+  Get information about an image, including metadata and a rich description.
+
+  Parameters:
+  - `args`: An object containing the image path – or a string representing the image path.
+
+  Returns:
+  The image information as a text description, or an error message if the analysis fails.
+*/
 export fn getImageInfo(args){let imagePath=null; if type(args)=="object"{if args["path"]!=null{imagePath=args["path"]}else if args["image_path"]!=null{imagePath=args["image_path"]}else if args["imagePath"]!=null{imagePath=args["imagePath"]}else if args["image"]!=null{imagePath=args["image"]}}else{imagePath=args}if imagePath==null||imagePath==""{return "Error: getImageInfo requires an image path."}if !contains(imagePath, "/"){imagePath=imageDir+imagePath}show "[SesiDo]: Analyzing image at:" imagePath; let info=model("SesiDo-Flash"){images:imagePath, thinkingLevel: lowThink, temperature: lowTemp}{"Provide metadata, details, and a rich description about the image and observable content."}; let filename=imageDir+sanitize(imagePath)+"-image-info.md"; Safe.writeFile(filename, info); show "[SesiDo]: Image info for" imagePath ":" info; return info}
+// SesiDo Agent: Web Browsing and Interaction
+/**
+  Browse and interact with a web page.
+
+  Parameters:
+  - `args`: An object containing the URL and operation – or an array where the first element is the URL and the second element is the operation.
+
+  Returns:
+  The result of the browser operation, or an error message if the operation fails.
+*/
 export fn browsePage(args){let url=null; let operation=null; if type(args)=="array"{if len(args)>0{url=args[0]}if len(args)>1{operation=args[1]}}else if type(args)=="object"{if args["url"]!=null{url=args["url"]}else if args["page"]!=null{url=args["page"]}if args["operation"]!=null{operation=args["operation"]}else if args["action"]!=null{operation=args["action"]}}else{url=args}if url==null||url==""||operation==null||operation==""{return "Error: browsePage requires a URL and operation."}if contains(url, ".html") || contains(url, ".htm") {if !contains(url, "://") {if slice(url, 0, 1) == "/" {url = "file://" + url} else {url = "file://" + Safe.wsRoot + "/" + url}}} else if !contains(url, "://") {url="https://"+url}show "[SesiDo]: Browser operation '" operation "' on:" url; let browserResponse=""; try{let browser=launch({"headless":true}); let page=browser.newPage(); page.goto(url); let pageContent=page.inner_text("body"); let pageTitle=page.title(); if pageContent==null{pageContent=""}if pageTitle==null{pageTitle=""}if len(pageContent)>12000{pageContent=slice(pageContent, 0, 12000)}if operation=="fetch"||operation=="get"||operation=="fetch_page"{if pageContent!=""{browserResponse=summarize({"text":pageContent})}else{browserResponse="Page loaded but no text content found in body. Title: "+pageTitle}}else if operation=="scrape"||operation=="extract"{browserResponse=pageContent}else if operation=="research"||operation=="search"{if pageContent==""{browserResponse="No page content to research. Title: "+pageTitle}else if len(pageContent)<500{return "Not enough page content for meaningful research. Use analyze or scrape instead."}else{browserResponse=research({"query":pageContent})}}else if operation=="analyze"||operation=="analyze_page"{if pageContent!=""{browserResponse=model("SesiDo-Lite"){temperature: lowTemp}{"Page Title:" pageTitle " Content:" pageContent " Analyze this web page's structure, purpose, and key elements."}}else{browserResponse="Page loaded but no content to analyze. Title: "+pageTitle}}else if operation=="screenshot"||operation=="capture"{page.screenshot({"path":browserDir+sanitize(url)+"-"+formattedTime+"-screenshot.png", "fullPage":true}); browserResponse="Screenshot captured and saved for "+url}else{browserResponse="Operation not recognized. Available: fetch, scrape, research, analyze, screenshot"}page.close(); browser.close()}catch(e){show "[SesiDo]: ⚠ Browser operation failed(" str(e)")"; browserResponse="Browser operation failed: "+str(e)}let filename=browserDir+sanitize(url)+"-"+formattedTime+"-browser.md"; Safe.writeFile(filename, browserResponse); show "[SesiDo]: Browser results saved to" browserDir "!"; return browserResponse}
 // Session Management
+/**
+  Create a new session with a unique ID.
+
+  Parameters:
+  - `args`: An object containing the session ID or name, or a string representing the session ID.
+
+  Returns:
+  A success message if the session is created and switched to, or an error message if the session already exists or the ID is invalid.
+*/
 export fn createSession(args){let sid=null; if type(args)=="object"{sid=args["id"]; if sid==null{sid=args["sessionId"]}if sid==null{sid=args["name"]}}else{sid=args}if sid==null||sid==""||sid=="{}"{sid="session-"+universalTime; sid=swap(sid, " ", "-")}if contains(sid, "/")||contains(sid, "\\")||contains(sid, ".."){return "Error: Session ID cannot contain '/', '\\', or '..'."}let existing=sessions.find({"id":sid}); if len(existing)>0{return "Error: Session '"+sid+"' already exists. Use open/switchSession to load it."}sessions.insert({"id":sid, "created":universalTime}); currentSessionId=sid; let sessionDir=logsDir+sid+"/"; make_dir(sessionDir); sessionLogPath=sessionDir+"agent-"+formattedTime+".log"; brain=get_base_brain(); let msg="Success: Created and switched to new session '"+sid+"'."; show "[SesiDo]:" msg; return msg}
+/**
+  Clear the current session's history and reset its memory.
+
+  Returns:
+  A success message if the history is cleared and memory is reset, or an error message if the operation fails.
+*/
 export fn clearCurrentSession(){show "[SesiDo]: Clearing history for session:" currentSessionId; try{history.delete({"sessionId":currentSessionId}); brain=get_base_brain(); show "[SesiDo]: Cleared history and reset memory for session:" currentSessionId; return "Success: History cleared and memory reset for session '"+currentSessionId+"'."}catch(e){show "[SesiDo]: Error clearing session history:" str(e); return "Error clearing session:"+str(e)}}
+/**
+  Switch to an existing session by its ID.
+
+  Parameters:
+  - `args`: An object containing the session ID or name, or a string representing the session ID.
+
+  Returns:
+  A success message if the session is switched to, or an error message if the session ID is invalid.
+*/
 export fn switchSession(args){let sid=null; if type(args)=="object"{sid=args["id"]; if sid==null{sid=args["sessionId"]}if sid==null{sid=args["name"]}}else{sid=args}if sid==null||sid==""||sid=="{}"{return "Error: switchSession requires a session id(e.g.{id:'my-session'})."}show "[SesiDo]: Switching to session:" sid; loadSession(sid); return "Success: Switched to session '"+sid+"'. You are now in a fresh or existing context for this ID."}
+/**
+  Extract a timestamp from a log file name.
+
+  Parameters:
+  - `name`: The name of the log file.
+
+  Returns:
+  The timestamp as a number, or -1 if the name format is invalid.
+*/
 fn logTimestamp(name){let parts=split(name, "-"); if len(parts)!=8||parts[0]!="agent"{return -1}let hour=num(parts[4]); let suffix=to_lower(parts[7]); if contains(suffix, "pm")&&hour<12{hour=hour+12}else if contains(suffix, "am")&&hour==12{hour=0}return num(parts[3])*10000000000+num(parts[1])*100000000+num(parts[2])*1000000+hour*10000+num(parts[5])*100+num(parts[6])}
+/**
+  List all available sessions.
+
+  Returns:
+  A list of session IDs, with the active session marked, or a message if no sessions are found.
+*/
 export fn listSessions(){let res="Conversation logs directory: "+logsDir; let sessionDir=logsDir+currentSessionId+"/"; let previousLog=""; try{let entries=list_dir(logsDir); if len(entries)==0{res=res+"\nNo log sessions found."}else{res=res+"\nLog sessions:"; for entry in entries{res=res+"\n- "+entry}}let currentLogKey=logTimestamp("agent-"+formattedTime+".log"); let previousLogKey=-1; let sessionEntries=list_dir(sessionDir); for entry in sessionEntries{let entryKey=logTimestamp(entry); if entryKey<currentLogKey&&entryKey>previousLogKey{previousLog=entry; previousLogKey=entryKey}}if previousLog!=""{res=res+"\nPrevious conversation log: "+sessionDir+previousLog}}catch(e){res=res+"\nError listing log sessions: "+str(e)}let sList=sessions.find(); if len(sList)==0{return res}res=res+"\nAvailable sessions:"; for s in sList{let activeMark=""; if s["id"]==currentSessionId{activeMark="(active)"}res=res+"\n- "+s["id"]+activeMark}show "[SesiDo]" res; return res}
 // Utility
+/**
+  Perform a text search within the specified path.
+
+  Parameters:
+  - `args`: An object containing the search parameters, or a string representing the query.
+    - `path`: The directory path to search in (default is ".").
+    - `query`: The search query string.
+
+  Returns:
+  The search results as a string, or an error message if the search fails.
+*/
 export fn textSearch(args){let path="."; let query=""; if type(args)=="object"{if args["path"]!=null{path=args["path"]}if args["query"]!=null{query=args["query"]}}else{query=str(args)}if query==""||query=="{}"{return "Error: textSearch requires a query."}let cmd="sesi -l helpers/text-search.sesi folder "+quote(path)+" "+quote(query)+" --skip node_modules --skip .git --skip sesi_modules"; try{let result=exec(cmd); return result}catch(e){return "textSearch error:"+str(e)}}
+/**
+  Perform file operations such as write, append, copy, and replace.
+
+  Parameters:
+  - `args`: An object containing the operation parameters.
+    - `command` or `cmd` or `cmd_arg`: The file operation command.
+    - `path` or `target`: The target file path.
+    - `text` or `extra`: Additional text or arguments for the operation.
+    - `old` and `new`: For replace operations, the old and new text.
+
+  Returns:
+  The result of the file operation, or an error message if it fails.
+*/
 export fn fileOps(args){let cmd_arg=""; let path=""; let extra=""; if type(args)=="object"{if args["command"]!=null{cmd_arg=args["command"]}else if args["cmd"]!=null{cmd_arg=args["cmd"]}else if args["cmd_arg"]!=null{cmd_arg=args["cmd_arg"]}if args["path"]!=null{path=args["path"]}else if args["target"]!=null{path=args["target"]}if args["text"]!=null{extra=args["text"]}else if args["extra"]!=null{extra=args["extra"]}if args["old"]!=null{extra=args["old"]; if args["new"]!=null{extra=extra+" "+args["new"]}}}else{cmd_arg=str(args)}if cmd_arg==""||cmd_arg=="{}"{return "Error: fileOps requires a command (write, append, copy, replace, etc)."}let userInput = input("SesiDo Agent is trying to run fileOps: \nPath"+path+"\nCommand: "+cmd_arg+"\nOther Args: "+extra+"\nProceed? (y/n) "); if to_lower(trim(userInput))!="y"{return "Error: User rejected fileOps request."}if to_lower(trim(userInput))=="y"{ if path==null||path==""{if extra!=""&&(cmd_arg=="write"||cmd_arg=="append"){let parts=split(extra, " "); path=parts[0]; extra=join(slice(parts, 1, len(parts)), " ")}}let cli="sesi -l helpers/agent-file-ops.sesi "+cmd_arg+" "+quote(path); if extra!=""{cli=cli+" "+quote(extra)}try{let result=exec(cli); return result}catch(e){return "fileOps error:"+str(e)}}}
+/**
+  Generate a commit message based on the current staged changes.
+
+  Parameters:
+  - `args`: An object containing the options for generating the commit message.
+    - `mode`: The mode for generating the commit message (default is "--staged").
+    - `write`: The file path to write the generated commit message to.
+
+  Returns:
+  The generated commit message, or an error message if it fails.
+*/
 export fn commitMessage(args){let mode="--staged"; let write_path=null; if type(args)=="object"{if args["mode"]!=null{mode="--"+args["mode"]}if args["write"]!=null{write_path=args["write"]}}else{if args!=null&&args!=""{mode="--"+str(args)}}let cli="sesi -l helpers/commit-message.sesi "+mode; if write_path!=null{cli=cli+" --write "+quote(write_path)}try{let result=exec(cli); return result}catch(e){return "commitMessage error:"+str(e)}}
+/**
+  Swap lines in a file based on the specified text.
+
+  Parameters:
+  - `args`: An object containing the parameters for the line swap operation.
+    - `path`: The file path where the line swap should occur.
+    - `from`: The text of the line to be replaced.
+    - `to`: The text of the line to replace with.
+    - `options`: Additional options for the line swap operation.
+
+  Returns:
+  The result of the line swap operation, or an error message if it fails.
+*/
 export fn lineSwap(args){let path=null; let from_text=null; let to_text=null; let options=null; if type(args)=="object"{path=args["path"]; from_text=args["from"]; to_text=args["to"]; options=args["options"]}if path==null||from_text==null||to_text==null{return "Error: lineSwap requires path, from, and to."}let cli="sesi -l helpers/line-swap.sesi "+quote(path)+" "+quote(from_text)+" "+quote(to_text); if options!=null{cli=cli+" "+quote(options)}try{let result=exec(cli); return result}catch(e){return "lineSwap error:"+str(e)}}
+/**
+  Generate an SVG badge with the specified label, value, and color.
+
+  Parameters:
+  - `args`: An object containing the parameters for the SVG badge.
+    - `path`: The file path where the SVG badge should be saved.
+    - `label`: The label text for the badge.
+    - `value`: The value text for the badge.
+    - `color`: The color of the badge.
+
+  Returns:
+  The result of the SVG badge generation, or an error message if it fails.
+*/
 export fn makeSVGBadge(args){let path=null; let label=null; let value=null; let color=null; if type(args)=="object"{path=args["path"]; label=args["label"]; value=args["value"]; color=args["color"]}if path==null||label==null||value==null||color==null{return "Error: makeSVGBadge requires path, label, value, and color."}let cli="sesi -l helpers/svg-badge.sesi "+" "+quote(label)+" "+quote(value)+" "+quote(color)+" "+quote(path); try{let result=exec(cli); return result}catch(e){return "makeSVGBadge error:"+str(e)}}
+/**
+  Generate an SVG banner with the specified title, tagline, theme, and injection content.
+
+  Parameters:
+  - `args`: An object containing the parameters for the SVG banner.
+    - `path`: The file path where the SVG banner should be saved.
+    - `title`: The title text for the banner.
+    - `tagline`: The tagline text for the banner (optional).
+    - `theme`: The theme for the banner (optional).
+    - `inject`: Additional content to inject into the banner (optional).
+
+  Returns:
+  The result of the SVG banner generation, or an error message if it fails.
+*/
 export fn makeSVGBanner(args){let path=null; let title=null; let tagline=null; let theme=null; let inject=null; if type(args)=="object"{path=args["path"]; title=args["title"]; tagline=args["tagline"]; theme=args["theme"]; inject=args["inject"]}if path==null||title==null{return "Error: makeSVGBanner requires path and title."}let cli="sesi -l helpers/readme-banner.sesi "+quote(title)+" "+quote(path); if tagline!=null{cli=cli+" --tagline "+quote(tagline)}if theme!=null{cli=cli+" --theme "+quote(theme)}if inject!=null{cli=cli+" --inject "+quote(inject)}try{let result=exec(cli); return result}catch(e){return "makeSVGBanner error: "+str(e)}}
 // Tool Registry
+/**
+  Registers and lists all local tools available in the Sesi environment.
+
+  Returns:
+  A list of all registered local tools and their descriptions.
+*/
 export fn localTools(){let tool_refs={}fn register_tool(name:string, func, desc:string){define_tool(name, func, desc); tool_refs[name]=desc}register_tool("makeDir", newDir, "Creates a directory at the specified path. Args: {path:}"); register_tool("read", read, "Safely reads a file. Args: {path: string}"); register_tool("write", write, "Safely writes a file. Args: {path: string, content: string}"); register_tool("temp", temp, "Safely creates a temporary file on disk, supports both text and base64 (media) content. Args: {title: string, content: string, ext: string, mode: string = text}"); register_tool("appendTo", appendTo, "Appends to a file. Args: {path: string, content: string}"); register_tool("extGet", extGet, "Retrieves the extension of a file. Args: {path: string}"); register_tool("remove", remove, "Safely removes a file. Args: {path: string}"); register_tool("move", move, "Moves a file or directory. Args: {path: string, dest: string}"); register_tool("list", list, "Safely lists a directory. Args: {path: string}"); register_tool("runSesi", runSesi, "Executes one Sesi script by path. Args: {path: string}"); register_tool("safeRun", safeRun, "Safely runs a terminal command. USE WITH CAUTION. Args: {command: string}"); register_tool("eval", eval, "Safely eval Sesi code. Args: {code: string}"); register_tool("httpGet", httpGet, "HTTP GET. Args: {url: string, headers?: object}"); register_tool("httpSend", httpSend, "HTTP POST/SEND. Args: {url: string, data: any, headers?: object}"); register_tool("writeCode", writeCode, "Generates code. Args: {query: string}"); register_tool("debugCode", debugCode, "Debugs code. Args: {path: string}"); register_tool("research", research, "Researches a topic. Args: {query: string}"); register_tool("summarize", summarize, "Summarizes text/file. Args: {text: string} Note: accepts both text and explicit path."); register_tool("calculator", calculator, "Calculates math. Args: {expression: string}"); register_tool("createSVG", createSVG, "Generates SVG. Args: {description: string}"); register_tool("generateVideo", generateVideo, "Generates a video. Args: {query: string, duration: 4|6|8, negative: string}"); register_tool("generateImage", generateImage, "Generates image. Args: {query: string}"); register_tool("drawPixelArt", drawPixelArt, "Generates pixel art / avatars / pixel-art visuals. Args: {description: string}"); register_tool("drawImage", drawImage, "Draws an image without calling an image generator. Args: {description: string}"); register_tool("getImageInfo", getImageInfo, "Analyzes image. Args: {path: string}"); register_tool("browsePage", browsePage, "Browse and access web pages. Args: {url: string, operation: string <- THIS MUST NOT BE EMPTY, YOU MUST SUPPLY THE SPECIFIC ACTION IN THIS FIELD}. Operation(s): fetch (summarize page), scrape (extract raw text), research (query content), analyze (structure analysis), screenshot (full page capture)"); register_tool("createSession", createSession, "Creates a new chat session with the specified ID or name. Args: {id: string}"); register_tool("clearCurrentSession", clearCurrentSession, "Wipes the history and memory of the ACTIVE session only. Use this to 'reset' without changing the session name."); register_tool("switchSession", switchSession, "Switch to a different session or CREATE a new one by providing a unique name/ID. Args: {id: string}"); register_tool("listSessions", listSessions, "Lists all available chat sessions so you can see what IDs exist."); register_tool("textSearch", textSearch, "Searches for a query string across files. Args: {path: string, query: string}. Path defaults to '.' (entire project)."); register_tool("fileOps", fileOps, "Performs file mutations: write, append, copy, replace, insert-before, insert-after, replace-block. Args: {command: string, path: string, text?: string, old?: string, new?: string}."); register_tool("commitMessage", commitMessage, "Generates a git commit message from staged or unstaged diffs. Args: {mode: 'staged'|'unstaged'|'all', write?: string}."); register_tool("lineSwap", lineSwap, "Swaps two lines in a file. Args: {path: string, from_text: string, to_text: string, options?: string}."); register_tool("makeSVGBadge", makeSVGBadge, "Creates an SVG badge. Args:{path: string, label: string, value: string, color: string}."); register_tool("makeSVGBanner", makeSVGBanner, "Creates an SVG banner. Args: {path: string, title: string, tagline?: string, theme?: string}."); let _registry=list_tools(); show "local tool registry loaded -" str(len(_registry))"tools available"; show to_json(tool_refs)}
+/**
+  Lists all tool names in the given tool map.
+
+  Parameters:
+  - `tool_map`: The map of tool names to their corresponding functions.
+
+  Returns:
+  A string containing all tool names, each prefixed with a dash.
+*/
 export fn list_tool_names(tool_map){if tool_map==null{return ""}let desc=""; for name in keys(tool_map){desc=desc+"-"+name+"; "}return desc}
+/**
+  Extracts the first JSON object from a given string.
+
+  Parameters:
+  - `value`: The string containing the JSON object.
+
+  Returns:
+  The JSON object as a string, or an empty string if no valid JSON object is found.
+*/
 fn extractStepJson(value){let text=trim(str(value)); text=swap(text, "```json", ""); text=swap(text, "```", ""); let start=-1; let depth=0; let in_string=false; let escaped=false; let i=0; while i<len(text){let ch=slice(text, i, i+1); if start==-1{if ch=="{"{start=i; depth=1}}else if in_string{if escaped{escaped=false}else if ch=="\\"{escaped=true}else if ch=="\""{in_string=false}}else{if ch=="\""{in_string=true}else if ch=="{"{depth=depth+1}else if ch=="}"{depth=depth-1; if depth==0{return slice(text, start, i+1)}}}i=i+1}return ""}
 // Help Menu
 fn showhelp(){show "[SesiDo]: How can I assist you today?
@@ -86,7 +567,14 @@ fn showhelp(){show "[SesiDo]: How can I assist you today?
             -Enter 'help' to see this message again.
             -Enter 'voice' to enable agent voice mode (if supported).
             -Enter 'exit' or 'quit' to end the session."}
-// Main Chat Loop
+/**
+  Main chat loop for interacting with the user.
+
+  This function initializes the available tools, displays the help menu, and enters a loop to process user commands.
+
+  Returns:
+  None. This function runs an interactive loop until the user exits.
+*/
 fn chat(){let tool_map={}; tool_map["newDir"] = newDir; tool_map["read"]=read; tool_map["write"]=write; tool_map["temp"] = temp; tool_map["appendTo"]=appendTo; tool_map["extGet"] = extGet; tool_map["remove"]=remove; tool_map["move"] = move; tool_map["list"]=list; tool_map["runSesi"]=runSesi; tool_map["safeRun"]=safeRun; tool_map["eval"]=eval; tool_map["httpGet"]=httpGet; tool_map["httpSend"]=httpSend; tool_map["writeCode"]=writeCode; tool_map["debugCode"]=debugCode; tool_map["research"]=research; tool_map["summarize"]=summarize; tool_map["calculator"]=calculator; tool_map["createSVG"]=createSVG; tool_map["generateVideo"] = generateVideo; tool_map["generateImage"]=generateImage; tool_map["drawPixelArt"] = drawPixelArt; tool_map["drawImage"] = drawImage; tool_map["getImageInfo"]=getImageInfo; tool_map["browsePage"]=browsePage; tool_map["createSession"]=createSession; tool_map["switchSession"]=switchSession; tool_map["listSessions"]=listSessions; tool_map["textSearch"]=textSearch; tool_map["fileOps"]=fileOps; tool_map["commitMessage"]=commitMessage; tool_map["lineSwap"]=lineSwap; tool_map["makeSVGBadge"]=makeSVGBadge; tool_map["makeSVGBanner"]=makeSVGBanner; let tools_desc=list_tool_names(tool_map); let last_tool_name=""; let last_tool_args={}; showhelp(); while true{let userInput=input("[You]: "); let cmd=trim(userInput); userInput=cmd; if userInput=="exit"||userInput=="quit"||userInput==""{show "[SesiDo]: Goodbye!"; break}if userInput=="clear"{clearCurrentSession(); continue}if userInput=="new"{show "[SesiDo]: Enter a new session ID (or leave blank to auto-generate):"; let newSessionId=input("[You]: "); let result=createSession(newSessionId); show result; continue} if userInput=="list"{listSessions(); continue} if userInput=="open"{show "[SesiDo]: Enter the session ID you want to open:"; let sessionId=input("[You]: "); let result=switchSession(sessionId); show result; continue} if userInput=="help"{showhelp(); continue} if userInput=="voice"{agentVoice.toggle(); continue} if userInput=="try again"{if last_tool_name==""{show "[SesiDo]: No previous tool call to retry."; continue}let retry_tool=tool_map[last_tool_name]; let retry_result=retry_tool(last_tool_args); show retry_result; continue}let direct_tool=tool_map[userInput]; if direct_tool!=null{last_tool_name=userInput; last_tool_args={}; let direct_result=direct_tool(last_tool_args); show direct_result; continue} show "[SesiDo]: Thinking..."; let steps_taken=0; let react_history=""; let final_res=""; let error_count=0; resetEvidence(userInput)
 let max_steps=num(trim(input("Max amount of steps for SesiDo agent to take each turn in this session? 'Enter a numerical value or leave blank for default (20)': "))); if max_steps==null||max_steps<1{max_steps=20} while steps_taken<max_steps{show "[SesiDo]: Step "+str(steps_taken+1)+"/"+str(max_steps); prompt react_prompt{"System: You are an agent with access to these tools:
 " tools_desc "
@@ -159,4 +647,12 @@ For branding updates:
     - Preserve your \"SesiDo Agentl\" persona: sharp, sophisticated, and nuanced, but conversational.
     - If you made changes or generated files, list them clearly in a simple text format. 
 \nUser: " userInput "\nStep budget: You are currently on step " str(steps_taken + 1) " of " str(max_steps) ". Plan accordingly and finish before the limit.\nPrevious steps: " react_history "\nNext Step JSON:"}; let step_text=""; try{step_text=model("SesiDo"){thinkingLevel: mediumThink, temp: mediumTemp, system: brain, max_tokens: 4096}{react_prompt}}catch(e){let model_error=str(e); let recovered=false; if hasGPT{show "[SesiDo]: ⚠ SesiDo failed("model_error"). Retrying with SesiDo-GPT..."; try{step_text=model("SesiDo-GPT"){thinkingLevel: mediumThink, system: brain, max_tokens: 4096}{react_prompt}; recovered=true}catch(e_gpt){model_error=str(e_gpt); show "[SesiDo]: SesiDo-GPT failed("model_error")."}}if !recovered{show "[SesiDo]: Retrying with SesiDo-Pro..."; try{step_text=model("SesiDo-Pro"){thinkingLevel: mediumThink, temperature: lowTemp, system: brain, max_tokens: 2048}{react_prompt}; recovered=true}catch(e2){model_error=str(e2); show "[SesiDo]: SesiDo-Lite-Power failed("model_error"). Retrying with SesiDo-Lite-Power..."; try{step_text=model("SesiDo-Lite-Power"){system: brain, max_tokens: 1024}{react_prompt}; recovered=true}catch(e3){model_error=str(e3)}}}if !recovered{show "[SesiDo]: ❌ All retry models failed: "model_error; final_res="Model request failed: "+model_error; break}} step_text=extractStepJson(step_text); let step=null; try{step=from_json(step_text)}catch(parse_error){step={}} if step==null||len(keys(step))==0{show "[SesiDo]: ⚠ Could not parse reasoning step."; error_count=error_count+1; react_history=react_history+" Thought: Failed to parse step response. Observation: Invalid JSON format. "; if error_count>=3{final_res="I ran into repeated errors trying to reason through that. Please try again."; break}}else{show "💭" step["thought"]; if step["finished"]{let proposedAnswer=step["final_answer"]; let guardedAnswer=guardEvidence(proposedAnswer); if guardedAnswer==proposedAnswer{final_res=proposedAnswer; break}react_history=react_history+"\nObservation: Completion evidence incomplete. "+guardedAnswer+"\n"; steps_taken=steps_taken+1; continue} let tool_name=step["tool_name"]; let tool_args=step["tool_args"]; if type(tool_args)=="string"{let parsed_args=null; try{parsed_args=from_json(tool_args)}catch(args_error){}if parsed_args!=null{tool_args=parsed_args}}if tool_args==null{tool_args={}} let obs=""; if tool_name==null||tool_name==""{obs="Reasoning step completed. No tool called."}else{show "🛠️ Calling tool:" tool_name; let tool_fn=tool_map[tool_name]; if tool_fn==null{obs="Error: Tool '"+tool_name+"' is not registered."; show "[SesiDo]: ❌ Tool not found:" tool_name; error_count=error_count+1}else{try{obs=tool_fn(tool_args); show "📥 Observation:" obs; error_count=0}catch(e){obs="Error executing tool:"+str(e); show "[SesiDo]: ❌ Tool error:" e; error_count=error_count+1}}recordEvidence(tool_name, tool_args, obs)}if error_count>=3{final_res="I encountered too many errors using tools. Please try again."; break}let history_observation=str(obs); if len(history_observation)>12000{history_observation=slice(history_observation, 0, 12000)+" [truncated]"}react_history=react_history+"\nThought: "+step["thought"]+"\nTool: "+tool_name+"\nObservation: "+history_observation+"\n"}steps_taken=steps_taken+1}if final_res==""{final_res="⚠️ Reached max reasoning steps without a final answer. Last steps: "+react_history}final_res=guardEvidence(final_res); show "[SesiDo]:" final_res; agentVoice.response(final_res); let logEntry="["+time()+"ms][USER]: "+userInput+"\n[THOUGHTS]:"+react_history+"\n[ASSISTANT]: "+final_res+"\n-----------------------------------\n"; try{Safe.appendFile(sessionLogPath, logEntry)}catch(e){}history.insert({"sessionId":currentSessionId, "role":"User", "content":userInput, "timestamp":universalTime}); history.insert({"sessionId":currentSessionId, "role":"Assistant", "content":final_res, "timestamp":universalTime}); brain=brain+"User:"+userInput+" Assistant:"+final_res+"; "}}
+/**
+  Entry point for the SesiDo application.
+
+  Sets up the models, displays the initial chat start message, and invokes the main chat loop.
+
+  Returns:
+  None.
+*/
 export fn main(){setModel(); show "[SesiDo]: Starting chat..."; let logTag = "[" + universalTime + "]"; show logTag + " [CHAT]"; chat(); show "[CHAT ENDED]"}

@@ -249,6 +249,49 @@ fn format_status(name: string, ok: bool) {
 show format_status("database", true)
 ```
 
+Document public and nontrivial declarations with a comment immediately above them. Sesi uses leading comments for hover details, retains function documentation across module exports and imports, and can pass handler descriptions to modules such as `std/api`.
+
+There is no required schema; even one clear descriptive sentence is valuable. For reusable functions, prefer this consistent structure:
+
+```sesi
+/**
+  Adds two numbers.
+
+  Parameters:
+  - `a`: The first number.
+  - `b`: The second number.
+
+  Returns:
+   The sum of `a` and `b`.
+*/
+fn add(a: number, b: number) -> number {
+  return a + b
+}
+```
+
+The same leading comments can document `make` and `let` declarations. This is particularly useful when a `let` contains an array or object. Describe the collection's purpose, array item shape and ordering, and meaningful object keys and defaults.
+
+```sesi
+
+/** Collects jobs waiting to be processed. */
+make JobQueue {
+  /**
+    Runtime settings shared by API requests.
+
+    Fields:
+    - `hosts`: Ordered fallback API hosts.
+    - `retries`: Maximum attempts per request.
+  */
+  let settings = {
+    "hosts": ["https://primary.example", "https://backup.example"],
+    "retries": 3
+  }
+  
+  /** Pending job objects in insertion order. */
+  let jobs = []
+}
+```
+
 You can use functions as small task units:
 
 ```sesi

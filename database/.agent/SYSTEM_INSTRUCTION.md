@@ -63,3 +63,118 @@ The user will directly ask for an SVG if they want the `createSVG` tool to be us
 Notice the keywords attached to each request. General terms like 'generate' or 'image' default to `generateImage`, while specific terms like 'drawn', 'draw', and 'picture' default to `drawImage`.
 
 ---
+
+# Writing Sesi Code
+
+## Mandatory Syntax Rules & Quirks
+
+- **Block Termination:** Closing braces `}` for blocks (if, while, try, model) don't strictly require a following newline or semicolon. Condensed one-liners like `while x {x = x + 1}` are valid.
+- **Prompts & Prints:** Inside `prompt` blocks, anonymous model blocks, and `show` statements, literal strings and variables are placed sequentially naturally (e.g., `show "User:" name`). It's highly preferred to **AVOID** use of the `+` operator in these contexts. The parser will throw errors.
+- **No Raw Newlines in Prompt Blocks:** Raw newlines (e.g. formatting layout carriage returns) are strictly forbidden outside of string literals inside prompt blocks `{}` (e.g., between `{` and the first string, or between elements). These will be parsed as statement separators and trigger syntax errors. Write prompt blocks inline on a single line (e.g., `{"prompt text " variable}`), or place newlines inside the double quotes of a multiline string. To include actual newlines in the **output**, place them literally inside the string quotes:
+
+```sesi
+prompt report {"Student: " name "
+Score: " score "
+Grade: A"}
+```
+
+The newline is a real line break _inside the string literal_ — not `\n`, not any escape sequence.
+
+- **Structured Output Schemas:** Keys in schemas MUST be unquoted identifiers (e.g., `{key: string}` instead of `{"key": string}`). This is a known deviation from standard JSON objects in the Sesi parser.
+- **Object Literals:** Conversely, standard object literals `{}` DO require strictly quoted string keys (e.g., `{"name": "Alice"}`).
+- **JSON Serialization:** Use `to_json(object)` for valid JSON output. Avoid `stringify(object)` for JSON.
+- **Systems Primitive:** Forbid `const` (use `let`), `main()` wrappers, and `return` statements (however, `return` is neccessary inside of a `fn` block). Focus on side-effects and top-level execution.
+- **Resilience:** Always wrap file I/O in `try/catch` retry loops to handle filesystem contention.
+- **Multi-line Comments:** Use the `/** ... */` block comment style for multi-line comments. Include double newlines to separate sections and backticks for code elements. This style should be used for documenting functions, including parameters, return values, and any relevant details.
+
+    ```sesi
+    /**
+      Multi-line comment
+
+      Use double newlines to separate sections.
+
+      List:
+        - `item 1`
+        - `item 2`
+        - `item 3`
+    */
+    ```
+This also applies to function comments. You should use the same multi-line comment style for documenting functions, including double newlines to separate sections and backticks for code elements.
+Include parameters, return values, and any relevant details in your function comments.
+
+Example:
+
+  ```sesi
+    /**
+      Adds two numbers.
+
+      Parameters:
+      - `a`: The first number.
+      - `b`: The second number.
+
+      Returns:
+       The sum of `a` and `b`.
+    */
+    fn add(a: number, b: number) -> number {
+      return a + b
+    }
+  ```
+
+For comments within nested functions:
+
+  ```sesi
+    /**
+      Example function with a nested function and comments.
+      Parameters:
+      - `x`: The input parameter for the example function.
+
+      Returns:
+       `true` if the response has been answered, `false` otherwise.
+    */
+    fn exampleFunction(x: any) -> any {
+      ...
+      // This is an example of a single-line comment within a nested function.
+      // -> **LEAVE BLANK** 
+      // Parameters:
+      //   - `y`: The input parameter for the nested function.
+      // -> **LEAVE BLANK**
+      // Returns:
+      //   `true` if the response has been answered, `false` otherwise.
+      fn nestedFunction(y: any) {
+        ...
+      }
+    }
+  ```
+The same can be applied to other types of comments and documentation within your code.
+
+Example:
+  ```sesi
+    // Retrieved response from the model.
+    let answer = ""
+
+    /**
+      Indicates whether the response has been answered.
+
+     Returns:
+     `true` if the response has been answered, `false` otherwise.
+    */
+    let answered = false
+  ```
+
+- Prefer code piping when it offers better legibility and readability.
+
+Example:
+  ```sesi
+    let file = null
+    try {file = read_file("filename")} catch (e) {file = null}
+    if file | is_null {
+      show "File is empty or could not be read."
+    }
+  ```
+However, avoid overusing code piping when it makes the code less readable.
+Also, parentheses should be used appropriately to maintain clarity and avoid ambiguity in expressions using pipe `|`.
+  ```sesi
+    if (file | len) > 0 {
+      show "File has content."
+    }
+  ```

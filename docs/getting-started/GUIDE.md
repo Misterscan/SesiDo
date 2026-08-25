@@ -106,6 +106,51 @@ greet("Ada")   // Hello, Ada
 
 Grammar: `'async'? 'fn' identifier '(' parameters ')' '->' type? block`
 
+### Documentation Comments
+
+Write a comment immediately above each public or nontrivial declaration. Sesi uses these comments in hover details, preserves function documentation across exports and imports, and can expose handler documentation through modules such as `std/api`.
+
+There is no required documentation schema—a clear description by itself is useful. For consistent, discoverable API documentation, prefer a short description followed by `Parameters` and `Returns` sections:
+
+```sesi
+/**
+  Adds two numbers.
+
+  Parameters:
+  - `a`: The first number.
+  - `b`: The second number.
+
+  Returns:
+   The sum of `a` and `b`.
+*/
+fn add(a: number, b: number) -> number {
+  return a + b
+}
+```
+
+Documentation comments also work on `make` and `let` declarations. They are especially valuable for `let` values containing arrays or objects: describe the purpose of the collection, the shape and ordering of array items, and the important object keys and defaults.
+
+```sesi
+
+/** Collects jobs waiting to be processed. */
+make JobQueue {
+  /**
+    Runtime settings shared by API requests.
+
+    Fields:
+    - `hosts`: Ordered fallback API hosts.
+    - `retries`: Maximum attempts per request.
+  */
+  let settings = {
+    "hosts": ["https://primary.example", "https://backup.example"],
+    "retries": 3
+  }
+  
+  /** Pending job objects in insertion order. */
+  let jobs = []
+}
+```
+
 ### Typed Parameters, Defaults, Return Values
 
 ```sesi
@@ -707,13 +752,12 @@ These are always available — no imports needed:
 | `to_json(obj)`   | Serialize object → JSON string   |
 | `from_json(str)` | Parse JSON string → object/array |
 
-### Speech & Translation
+### Speech
 
 | Function | Description |
 | -------- | ----------- |
 | `speech(text, voice?, gemini?)` | Speak text with the system voice or Gemini |
 | `from_speech(path, language?, gemini?)` | Transcribe with Whisper or Gemini |
-| `translate(text, to, from?, gemini?)` | Translate with the `translate` package or Gemini |
 
 `from_speech()` needs Whisper and a local model.
 
