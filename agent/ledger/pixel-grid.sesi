@@ -138,7 +138,7 @@ export fn buildScript(spec, output_path, palette_override = null) -> string {
     let width = len(grid[0]) * scale
     let height = len(grid) * scale
 
-    return "allow \"std/draw\" in with Draw\n" + "Draw.clear()\n" + "let palette = " + to_json(palette) + "\n" + "let grid = " + to_json(grid) + "\n" + "Draw.pixel_grid(grid, palette, " + str(scale) + ", 0, 0)\n" + "Draw.save_png(" + to_json(output_path) + ", " + str(width) + ", " + str(height) + ")\n"
+    return "allow \"std/draw\" in as Draw\n" + "Draw.clear()\n" + "let palette = " + to_json(palette) + "\n" + "let grid = " + to_json(grid) + "\n" + "Draw.pixel_grid(grid, palette, " + str(scale) + ", 0, 0)\n" + "Draw.save_png(" + to_json(output_path) + ", " + str(width) + ", " + str(height) + ")\n"
 }
 
 export fn variationName(variation, index) -> string {

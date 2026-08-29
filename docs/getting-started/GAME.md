@@ -29,7 +29,7 @@ let game = Game.create({
 
 let scene = game.create_scene("main")
 let camera = scene.orbit_camera("camera", {
-  "alpha": 1.57,
+  "alpha": -1.57,
   "beta": 1.0,
   "radius": 12,
   "target": Game.vec3(0, 1, 0)
@@ -53,7 +53,8 @@ game.run()
 
 ## Coordinate and timing conventions
 
-- Right-handed coordinates, Y up.
+- Left-handed coordinates, Y up: `+X` is right and `+Z` is forward.
+- At zero yaw, a chase camera belongs behind the player on `-Z`; positive Y rotation turns toward `+X` (right).
 - Distances are meters.
 - Rotations are radians.
 - The default window is 1280×720 and resizable.
@@ -110,7 +111,7 @@ Game members:
 - `game.running` is read-only.
 - `game.create_scene(name, options?)`, `game.scene(name)`, and `game.activate_scene(name)` manage scenes.
 - `game.on_start(fn)`, `game.on_update(fn)`, `game.on_fixed_update(fn)`, and `game.on_stop(fn)` register callbacks.
-- `game.run(options?)` shows the window and blocks until it closes.
+- `game.run(options?)` shows the window and blocks until it closes. Options include `icon` and `inspector`.
 - `game.build(path, options?)` creates an unsigned unpacked app for the current OS and architecture.
 - `game.dispose()` releases the game and allows another game to be created in tests or tooling.
 
@@ -128,7 +129,7 @@ game.assets.add("impact", "audio", "assets/impact.ogg")
 game.assets.add("ui", "font", "assets/Inter.woff2")
 ```
 
-Supported types are `model`, `texture`, `environment`, `audio`, and `font`. Local files must remain inside permitted project roots. Builds download HTTP/HTTPS assets with redirect, timeout, maximum-size, and optional SHA-256 checks, then store content-addressed copies in the app. Registered `.gltf` files and their dependency assets are packaged; prefer `.glb` when a single-file model is convenient.
+Supported types are `model`, `texture`, `environment`, `audio`, and `font`. During development, relative asset paths use the current working directory, exactly like `read_file`, `write_file`, `Draw.save_png`, and `Audio.save`. Local files must remain inside permitted project roots. Builds download HTTP/HTTPS assets with redirect, timeout, maximum-size, and optional SHA-256 checks, then store content-addressed copies in the app. Registered `.gltf` files and their dependency assets are packaged; prefer `.glb` when a single-file model is convenient.
 
 Use `game.assets.get(name)` and `game.assets.names()` for inspection.
 
@@ -140,12 +141,46 @@ Generate game art and sound with Sesi, then register the resulting files as asse
 allow "std/draw" in as Draw
 allow "std/audio" in as Audio
 
+make_dir("assets")
 Draw.pixel_grid(["YY", "YY"], {"Y": "#facc15"}, 16)
 Draw.save_png("assets/coin.png", 32, 32, "transparent")
 Audio.save("assets/pickup.wav", "E6", 90, "sine")
 
 game.assets.add("coin", "texture", "assets/coin.png")
 game.assets.add("pickup", "audio", "assets/pickup.wav")
+```
+
+### App icon
+
+Pass a registered texture asset name or local image path to `game.run`. When `icon` is omitted, Sesi uses its default placeholder icon.
+
+```sesi
+game.assets.add("app_icon", "texture", "assets/app-icon.png")
+game.run({"icon": "app_icon"})
+game.build("build/MyGame", {"icon": "app_icon"})
+```
+
+`game.build` embeds the icon, converts it to the host platform's native application-icon format, and applies it to the packaged executable/app bundle. If the build option is omitted, a registered texture named `icon` is used automatically; otherwise Sesi packages its default placeholder. PNG and JPEG work across desktop platforms; ICO and ICNS are also accepted. You can create a custom logo with `image()`:
+
+```sesi
+let logo = image("gemini-3.1-flash-image") {ratio: "1:1", size: "512"} {
+  "A bold square app logo for a colorful arcade game"
+}
+write_image("assets/app-icon.png", logo)
+```
+
+For a deterministic pixel-art logo, use `Draw.pixel_grid()`:
+
+```sesi
+allow "std/draw" in as Draw
+
+Draw.pixel_grid([
+  "0110",
+  "1001",
+  "1111",
+  "1001"
+], {"0": "transparent", "1": "#22d3ee"}, 32)
+Draw.save_png("assets/app-icon.png", 128, 128, "#07111f")
 ```
 
 ## Meshes and models
@@ -171,7 +206,7 @@ Use `scene.get(name)`, `scene.remove(object)`, `scene.intersects(left, right)`, 
 
 ```sesi
 scene.free_camera("free", {"position": Game.vec3(0, 2, -8)})
-scene.orbit_camera("orbit", {"alpha": 1.57, "beta": 1.1, "radius": 14})
+scene.orbit_camera("orbit", {"alpha": -1.57, "beta": 1.1, "radius": 14})
 scene.follow_camera("follow", {"position": Game.vec3(0, 4, -10)})
 
 scene.hemispheric_light("ambient", {"intensity": 0.6})
@@ -311,6 +346,8 @@ Values are JSON-compatible and isolated by the game's storage name.
 ```sesi
 if includes(args, "--build") {
   game.build("build/MyGame", {"overwrite": true})
+  // Compress the build output into a single archive file for easier distribution.
+  zip("build/MyGame", "MyGame.zip")
 } else {
   game.run({"inspector": true})
 }

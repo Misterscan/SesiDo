@@ -9,7 +9,6 @@ Usage:
     sesi -l helpers/commit-message.sesi all
     sesi -l helpers/commit-message.sesi staged --write commit_message.txt
 */
-allow "shell-automation" in with {run_command}
 allow "safe" in as safe
 
 fn show_help() {
@@ -71,7 +70,7 @@ fn parse_options() {
 
 fn run_git(command: str) -> str {
   try {
-    return run_command(command)
+    return run(command)
   } catch (err) {
     show "Git command failed:" command
     show err
@@ -85,7 +84,7 @@ fn read_git_diff(command: str, temp_path: str) -> str {
   } catch (cleanup_err) {}
 
   try {
-    run_command(command + " --output=\"" + temp_path + "\"")
+    run(command + " --output=\"" + temp_path + "\"")
     let full_diff = safe.read(temp_path)
     try {
       safe.remove(temp_path)

@@ -1,0 +1,10 @@
+{
+  "servers": {
+    "sesido": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${workspaceFolder}/agent/mcp/server.mjs"],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}

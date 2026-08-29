@@ -1,10 +1,21 @@
-/*
-    Safe File Access
-   Resilient file operations wrapped in try-catch blocks with retry logic to prevent crashes.
+/**
+  Safe File Access
+  Resilient file operations wrapped in try-catch blocks with retry logic to prevent crashes.
+
+  This module provides safe and resilient file operations, including reading, writing, and checking file existence, with built-in retry logic to handle transient errors gracefully.
 */
+
 allow "std/time" in as Time
 
-// Get the file extension from a given path
+/**
+  Get the file extension from a given path.
+
+  Parameters:
+  - `path`: The file path from which to extract the extension.
+
+  Returns:
+  The file extension as a string, or an error message if the extension cannot be determined.
+*/
 export fn getExtension(path: str) -> str {
   try {
     let ext = get_ext(path)
@@ -17,36 +28,64 @@ export fn getExtension(path: str) -> str {
   }
 }
 
-// Compatibility for versatility
+/**
+  Compatibility for versatility.
+  These functions provide alternative names for `getExtension` to improve code readability and flexibility.
+*/
+
+/**
+  Get the file extension from a given path (alternative name for `getExtension`).
+*/
 export fn getExt(path: str) -> str {
   return getExtension(path)
 }
 
+/**
+  Get the file extension from a given path (alternative name for `getExtension`).
+*/
 export fn getFileExtension(path: str) -> str {
   return getExtension(path)
 }
 
+/**
+  Get the file extension from a given path (alternative name for `getExtension`).
+*/
 export fn getFileExt(path: str) -> str {
   return getExtension(path)
 }
 
+/**
+  Get the file extension from a given path (alternative name for `getExtension`).
+*/
 export fn getFileType(path: str) -> str {
   return getExtension(path)
 }
 
-export fn fileType(path: str) -> str {
-  return getExtension(path)
-}
-
+/**
+  Get the file extension from a given path (alternative name for `getExtension`).
+*/
 export fn extension(path: str) -> str {
   return getExtension(path)
 }
 
+/**
+  Get the file extension from a given path (alternative name for `getExtension`).
+*/
 export fn ext(path: str) -> str {
   return getExtension(path)
 }
 
-// Resilience Helper: Safe file read with retry logic
+/**
+  Safe file read with retry logic.
+  Attempts to read a file up to 3 times in case of transient errors.
+
+  Parameters:
+  - `path`: The path to the file to read.
+  - `mode`: The mode in which to read the file (default is "text").
+
+  Returns:
+  The content of the file as a string, or an empty string if reading fails after 3 attempts.
+*/
 export fn readFile(path: string, mode: string = "text") -> string {
   let result = ""
   let success = false
@@ -66,15 +105,22 @@ export fn readFile(path: string, mode: string = "text") -> string {
   return result
 }
 
-// Compatibiltity for versatility
+/**
+  Read a file using the safe read logic (alternative name for `readFile`).
+*/
 export fn read(path: string) -> string {
   return readFile(path)
 }
-
+/**
+  Get the content of a file using the safe read logic (alternative name for `readFile`).
+*/
 export fn getContent(path: string) -> string {
   return readFile(path)
 }
 
+/**
+  Get the content of a file using the safe read logic (alternative name for `readFile`).
+*/
 export fn contents(path: string, mode: string = "text") -> string {
   if mode == "" || is_null(mode) {
     mode = "text"
@@ -82,6 +128,9 @@ export fn contents(path: string, mode: string = "text") -> string {
   return readFile(path, mode)
 }
 
+/**
+  View the content of a file using the safe read logic (alternative name for `readFile`).
+*/
 export fn view(path: string, mode: string = "text") -> string {
   if mode == "" || is_null(mode) {
     mode = "text"
@@ -89,20 +138,39 @@ export fn view(path: string, mode: string = "text") -> string {
   return readFile(path, mode)
 }
 
+/**
+  View the content of a file using the safe read logic (alternative name for `readFile`).
+*/
 export fn viewFile(path: string) -> string {
   return readFile(path)
 }
 
+/**
+  View the content of a media file using the safe read logic (alternative name for `readFile` with "base64" mode).
+*/
 export fn viewMedia(path: string) -> string {
   return readFile(path, "base64")
 }
 
-// Get contents from a file as a string but with the filename prepended (more useful for LLMs)
+/**
+  Get contents from a file as a string but with the filename prepended (more useful for LLMs).
+
+  Returns:
+  A string containing the filename and the content of the file.
+*/
 export fn fromFile(path: string) -> string {
   return "Filename: " + path + "\nContent: " + read(path)
 }
 
-// Get contents of multiple files as an array of strings (with filenames prepended)
+/**
+  Get contents of multiple files as an array of strings (with filenames prepended).
+
+  Parameters:
+  - `paths`: An array of file paths to read.
+
+  Returns:
+  An array of strings, each containing the filename and the content of the corresponding file.
+*/
 export fn fromFiles(paths: array) -> array<string> {
   let contents = []
   for path in paths {
@@ -111,29 +179,58 @@ export fn fromFiles(paths: array) -> array<string> {
   return contents
 }
 
-// Checks if a file exists and returns true if it does, false otherwise.
+/**
+  Check if a file exists at the given path.
+
+  Parameters:
+  - `path`: The path to the file to check.
+
+  Returns:
+  `true` if the file exists, `false` otherwise.
+*/
 export fn fileExists(path: string) -> bool {
   return exists(path)
 }
 
-// Compatibiltity for versatility
+/**
+  Check if a path exists at the given path (alternative name for `fileExists`).
+*/
 export fn pathExists(path: string) -> bool {
   return fileExists(path)
 }
 
+/**
+  Verify if a file exists at the given path (alternative name for `fileExists`).
+*/
 export fn verifyFile(path: string) -> bool {
   return fileExists(path)
 }
 
+/**
+  Verify if a path exists at the given path (alternative name for `pathExists`).
+*/
 export fn verifyPath(path: string) -> bool {
   return pathExists(path)
 }
 
+/**
+  Verify if a file exists at the given path (alternative name for `fileExists`).
+*/
 export fn verify(path: string) -> bool {
   return fileExists(path)
 }
 
-// Resilience Helper: Safe file write with retry logic
+/**
+  Write a file to the given path with retry logic for resilience.
+
+  Parameters:
+  - `path`: The path to the file to write.
+  - `content`: The content to write to the file.
+  - `mode`: The mode to use for writing the file (default is "text").
+
+  Returns:
+  A string indicating the success or failure of the write operation.
+*/
 export fn writeFile(path: string, content: string, mode: string = "text") -> string {
   let success = false
   let attempts = 0
@@ -161,11 +258,24 @@ export fn writeFile(path: string, content: string, mode: string = "text") -> str
   }
 }
 
-// Compatibiltity for versatility
+/**
+  Write a file to the given path (alternative name for `writeFile`).
+*/
 export fn write(path: string, content: string, mode: string = "text") -> any {
   return writeFile(path, content, mode)
 }
 
+/**
+  Overwrite a file at the given path if it exists, otherwise create a new file.
+
+  Parameters:
+  - `path`: The path to the file to overwrite or create.
+  - `content`: The content to write to the file.
+  - `mode`: The mode to use for writing the file (default is "text").
+
+  Returns:
+  A string indicating the success or failure of the write operation.
+*/
 export fn overwrite(path: string, content: string, mode: string = "text") -> any {
   if fileExists(path) {
     return writeFile(path, content, mode)
@@ -175,10 +285,16 @@ export fn overwrite(path: string, content: string, mode: string = "text") -> any
   }
 }
 
+/**
+  Make a new file at the given path (alternative name for `writeFile`).
+*/
 export fn makeFile(path: string, content: string = "", mode: string = "text") -> any {
   return writeFile(path, content, mode)
 }
 
+/**
+  Create a new file at the given path if it does not already exist. Otherwise, it will not modify the existing file.
+*/
 export fn newFile(path: string, content: string = "", mode: string = "text") -> any {
   if fileExists(path) {
     show "File already exists at" path "."
@@ -187,6 +303,9 @@ export fn newFile(path: string, content: string = "", mode: string = "text") -> 
   return writeFile(path, content, mode)
 }
 
+/**
+  Make a new file at the given path if it does not already exist (alternative name for `newFile`).
+*/
 export fn makeNewFile(path: string, content: string = "", mode: string = "text") -> any {
   if fileExists(path) {
     show "File already exists at" path "."
@@ -195,6 +314,9 @@ export fn makeNewFile(path: string, content: string = "", mode: string = "text")
   return writeFile(path, content, mode)
 }
 
+/**
+  Create a new file at the given path if it does not already exist (alternative name for `newFile`).
+*/
 export fn createFile(path: string, content: string = "", mode: string = "text") -> any {
   if fileExists(path) {
     show "File already exists at" path "."
@@ -203,6 +325,9 @@ export fn createFile(path: string, content: string = "", mode: string = "text") 
   return writeFile(path, content, mode)
 }
 
+/**
+  Create a new file at the given path if it does not already exist (alternative name for `newFile`).
+*/
 export fn new(path: string, content: string = "", mode: string = "text") -> any {
   if fileExists(path) {
     show "File already exists at" path "."
@@ -211,7 +336,9 @@ export fn new(path: string, content: string = "", mode: string = "text") -> any 
   return writeFile(path, content, mode)
 }
 
-// Similar to overwrite but more optimized
+/**
+  Create a new file at the given path, overwriting it if it already exists (optimized version of `overwrite`).
+*/
 export fn freshFile(path: string, content: string = "", mode: string = "text") -> any {
   if fileExists(path) {
     try {
@@ -223,12 +350,23 @@ export fn freshFile(path: string, content: string = "", mode: string = "text") -
   return writeFile(path, content, mode)
 }
 
-// Compatibiltity for versatility
+/**
+  Create a new file at the given path, overwriting it if it already exists (alternative name for `freshFile`).
+*/
 export fn fresh(path: string, content: string = "", mode: string = "text") -> any {
   return freshFile(path, content, mode)
 }
 
-// Resilience Helper: Safe file write with retry logic
+/**
+  Write an image to the given path with retry logic to ensure resilience.
+
+  Parameters:
+  - path: The file path where the image should be saved.
+  - content: The image content to be written.
+  
+  Returns:
+    A string indicating the success or failure of the operation.
+*/
 export fn writeImage(path: string, content: string) -> string {
   let success = false
   let attempts = 0
@@ -248,24 +386,51 @@ export fn writeImage(path: string, content: string) -> string {
   }
 }
 
-// Compatibiltity for versatility
+/**
+  Save media content to the given path using base64 encoding.
+
+  Parameters:
+  - path: The file path where the media should be saved.
+  - content: The media content to be written.
+
+  Returns:
+    The result of the `new` function call.
+*/
 export fn saveMedia(path: string, content: string) -> any {
   return new(path, content, "base64")
 }
 
+/**
+  Save an image to the given path (alternative name for `writeImage`).
+*/
 export fn saveImage(path: string, content: string) -> any {
   return writeImage(path, content)
 }
 
+/**
+  Save an image to the given path (alternative name for `writeImage`).
+*/
 export fn saveImg(path: string, content: string) -> any {
   return writeImage(path, content)
 }
 
+/**
+  Save an image to the given path (alternative name for `writeImage`).
+*/
 export fn saveIMG(path: string, content: string) -> any {
   return writeImage(path, content)
 }
 
-// Resilience Helper: Safe file append with retry logic
+/**
+  Append content to the given file with retry logic to ensure resilience.
+
+  Parameters:
+  - path: The file path where the content should be appended.
+  - content: The content to be appended.
+
+  Returns:
+    A string indicating the success or failure of the operation.
+*/
 export fn appendFile(path: string, content: string) -> string {
   let success = false
   let attempts = 0
@@ -285,24 +450,44 @@ export fn appendFile(path: string, content: string) -> string {
   }
 }
 
-// Compatibiltity for versatility
+/**
+  Append content to the given file (alternative name for `appendFile`).
+*/
 export fn addContent(path: string, content: string) -> any {
   return appendFile(path, content)
 }
 
+/**
+  Append content to the bottom of the given file (alternative name for `appendFile`).
+*/
 export fn addToBottom(path: string, content: string) -> any {
   return appendFile(path, content)
 }
 
+/**
+  Append content to the given file (alternative name for `appendFile`).
+*/
 export fn addToFile(path: string, content: string) -> any {
   return appendFile(path, content)
 }
 
+/**
+  Append content to the given file (alternative name for `appendFile`).
+*/
 export fn addTo(path: string, content: string) -> any {
   return appendFile(path, content)
 }
 
-// Resilience Helper: Safe file move with retry logic
+/**
+  Move a file to a new location with retry logic to ensure resilience.
+
+  Parameters:
+  - path: The current file path.
+  - dest: The destination file path.
+
+  Returns:
+    A string indicating the success or failure of the operation.
+*/
 export fn moveFile(path: string, dest: string) -> string {
   let success = false
   let attempts = 0
@@ -322,32 +507,57 @@ export fn moveFile(path: string, dest: string) -> string {
   }
 }
 
-// Compatibiltity for versatility
+/**
+  Move a file to a new location (alternative name for `moveFile`).
+*/
 export fn relocate(path: string, dest: string) -> any {
   return moveFile(path, dest)
 }
 
+/**
+  Change the name of a file (alternative name for `moveFile`).
+*/
 export fn changeName(path: string, newName: string) -> any {
   return moveFile(path, newName)
 }
 
+/**
+  Change the name of a file (alternative name for `moveFile`).
+*/
 export fn changeTo(path: string, newName: string) -> any {
   return moveFile(path, newName)
 }
 
+/**
+  Move a file to a new location (alternative name for `moveFile`).
+*/
 export fn moveTo(path: string, dest: string) -> any {
   return moveFile(path, dest)
 }
 
+/**
+  Move a file to a new location (alternative name for `moveFile`).
+*/
 export fn move(path: string, dest: string) -> any {
   return moveFile(path, dest)
 }
 
+/**
+  Move a file to a new location (alternative name for `moveFile`).
+*/
 export fn relocateTo(path: string, dest: string) -> any {
   return moveFile(path, dest)
 }
 
-// Resilience Helper: Safe file delete with retry logic
+/**
+  Remove a file or directory with retry logic to ensure resilience.
+
+  Parameters:
+  - path: The file or directory path to be removed.
+
+  Returns:
+    A string indicating the success or failure of the operation.
+*/
 export fn remove(path: string) -> string {
   let success = false
   let attempts = 0
@@ -367,44 +577,78 @@ export fn remove(path: string) -> string {
   }
 }
 
-// Compatibiltity for versatility
+/**
+  Remove a file or directory (alternative name for `remove`).
+*/
 export fn delete(path: string) -> any {
   return remove(path)
 }
 
+/**
+  Remove a file (alternative name for `remove`).
+*/
 export fn deleteFile(path: string) -> any {
   return remove(path)
 }
 
+/**
+  Remove a directory (alternative name for `remove`).
+*/
 export fn deleteDir(path: string) -> any {
   return remove(path)
 }
 
+/**
+  Remove a file or directory (alternative name for `remove`).
+*/
 export fn nuke(path: string) -> any {
   return remove(path)
 }
 
+/**
+  Remove a file (alternative name for `remove`).
+*/
 export fn trashFile(path: string) -> any {
   return remove(path)
 }
 
+/**
+  Remove a directory (alternative name for `remove`).
+*/
 export fn trashDir(path: string) -> any {
   return remove(path)
 }
 
+/**
+  Remove a file or directory (alternative name for `remove`).
+*/
 export fn dispose(path: string) -> any {
   return remove(path)
 }
 
+/**
+  Remove a directory (alternative name for `remove`).
+*/
 export fn disposeDir(path: string) -> any {
   return remove(path)
 }
 
+/**
+  Remove a file or directory (alternative name for `remove`).
+*/
 export fn purge(path: string) -> any {
   return remove(path)
 }
 
-// Resilience Helper: Safe archiving with retry logic
+/**
+  Archive a file with retry logic to ensure resilience.
+
+  Parameters:
+  - path: The file path to be archived.
+
+  Returns:
+    A string indicating the success or failure of the operation.
+*/
 export fn archiveFile(path: string) -> string {
   let success = false
   let attempts = 0
@@ -425,19 +669,36 @@ export fn archiveFile(path: string) -> string {
   }
 }
 
-// Compatibiltity for versatility
+/**
+  Backup a file by archiving it (alternative name for `archiveFile`). 
+*/
 export fn backupFile(path: string) -> any {
   return archiveFile(path)
 }
 
+/**
+  Backup a file by archiving it (alternative name for `archiveFile`). 
+*/
 export fn backup(path: string) -> any {
   return archiveFile(path)
 }
 
+/**
+  Recycle a file by archiving it (alternative name for `archiveFile`). 
+*/
 export fn recycleFile(path: string) -> any {
   return archiveFile(path)
 }
 
+/**
+  Archive a directory with retry logic to ensure resilience.
+
+  Parameters:
+  - path: The directory path to be archived.
+
+  Returns:
+    A string indicating the success or failure of the operation.
+*/
 export fn archiveDir(path: string) -> string {
   let success = false
   let attempts = 0
@@ -458,19 +719,36 @@ export fn archiveDir(path: string) -> string {
   }
 }
 
+/**
+  Backup a directory by archiving it (alternative name for `archiveDir`).
+*/
 export fn backupDir(path: string) -> any {
   return archiveDir(path)
 }
 
+/**
+  Recycle a directory by archiving it (alternative name for `archiveDir`).
+*/
 export fn recycleDir(path: string) -> any {
   return archiveDir(path)
 }
 
+/**
+  Recycle a directory by archiving it (alternative name for `archiveDir`).
+*/
 export fn recycle(path: string) -> any {
   return archiveDir(path)
 }
 
-// Resilience Helper: Safe directory listing with retry logic
+/**
+  List the contents of a directory with retry logic to ensure resilience.
+
+  Parameters:
+  - path: The directory path to be listed.
+
+  Returns:
+    An array of strings representing the contents of the directory. Returns an empty array if the operation fails.
+*/
 export fn listDir(path: string) -> array<string> {
   let success = false
   let attempts = 0
@@ -485,28 +763,50 @@ export fn listDir(path: string) -> array<string> {
   return []
 }
 
-// Compatibiltity for versatility
+/**
+  Get the contents of a directory (alternative name for `listDir`).
+*/
 export fn getDir(path: string) -> array<string> {
   return listDir(path)
 }
 
+/**
+  Get the files in a directory (alternative name for `listDir`).
+*/
 export fn getFiles(path: string) -> array<string> {
   return listDir(path)
 }
 
+/**
+  Get the items in a directory (alternative name for `listDir`).
+*/
 export fn getItems(path: string) -> array<string> {
   return listDir(path)
 }
 
+/**
+  List the contents of a directory (alternative name for `listDir`).
+*/
 export fn list(path: string) -> array<string> {
   return listDir(path)
 }
 
+/**
+  List the files in a directory (alternative name for `listDir`).
+*/
 export fn listFiles(path: string) -> array<string> {
   return listDir(path)
 }
 
-// Check if a directory exists and return true if it does, false otherwise.
+/**
+  Check if a directory exists and return true if it does, false otherwise.
+
+  Parameters:
+  - path: The directory path to check for existence.
+
+  Returns:
+    A boolean indicating whether the directory exists (`true`) or not (`false`).
+*/
 export fn dirExists(path: string) -> bool {
   try {
     listDir(path)
@@ -516,15 +816,29 @@ export fn dirExists(path: string) -> bool {
   }
 }
 
-// Compatibiltity for versatility
+/**
+  Check if a folder exists (alternative name for `dirExists`).
+*/
 export fn folderExists(path: string) -> any {
   return dirExists(path)
 }
 
+/**
+  Check if a directory exists (alternative name for `dirExists`).
+*/
 export fn directoryExists(path: string) -> any {
   return dirExists(path)
 }
 
+/**
+  Check if a path is a folder.
+
+  Parameters:
+  - path: The path to check.
+
+  Returns:
+    A boolean indicating whether the path is a folder (`true`) or not (`false`).
+*/
 export fn isFolder(path: string) -> bool {
   // If it's a file, return false. If it's a directory, return true. If it doesn't exist, return false.
   try {
@@ -535,7 +849,15 @@ export fn isFolder(path: string) -> bool {
   return dirExists(path)
 }
 
-// Simply try/catch wrapper for make_dir
+/**
+  Create a directory safely with error handling.
+
+  Parameters:
+  - path: The directory path to create.
+
+  Returns:
+    A message indicating success or the error encountered.
+*/
 export fn makeDir(path: string) -> any {
   try {
     make_dir(path)
@@ -545,27 +867,50 @@ export fn makeDir(path: string) -> any {
   }
 }
 
-// Compatibiltity for versatility
+/**
+  Create a new directory (alternative name for `makeDir`).
+*/
 export fn newDir(path: string) -> any {
   return makeDir(path)
 }
 
+/**
+  Create a new folder (alternative name for `makeDir`).
+*/
 export fn newFolder(path: string) -> any {
   return makeDir(path)
 }
 
+/**
+  Create a folder (alternative name for `makeDir`).
+*/
 export fn makeFolder(path: string) -> any {
   return makeDir(path)
 }
 
+/**
+  Create a new folder (alternative name for `makeDir`).
+*/
 export fn makeNewFolder(path: string) -> any {
   return makeDir(path)
 }
 
+/**
+  Create a folder (alternative name for `makeDir`).
+*/
 export fn createFolder(path: string) -> any {
   return makeDir(path)
 }
 
+/**
+  Check if a directory is empty.
+
+  Parameters:
+  - path: The directory path to check.
+
+  Returns:
+    A boolean indicating whether the directory is empty (`true`) or not (`false`).
+*/
 export fn emptyDirCheck(path: string) -> bool {
   let attempts = 0
   while attempts < 3 {
@@ -579,15 +924,29 @@ export fn emptyDirCheck(path: string) -> bool {
   return false
 }
 
-// Compatibiltity for versatility
+/**
+  Check if a directory is empty (alternative name for `emptyDirCheck`).
+*/
 export fn isEmpty(path: string) -> any {
   return emptyDirCheck(path)
 }
 
+/**
+  Check if a directory is empty (alternative name for `emptyDirCheck`).
+*/
 export fn isEmptyDir(path: string) -> any {
   return emptyDirCheck(path)
 }
 
+/**
+  Clear the contents of a directory safely.
+
+  Parameters:
+  - path: The directory path to clear.
+
+  Returns:
+    A message indicating whether the directory was successfully cleared or not.
+*/
 export fn clearDir(path: string) -> string {
   remove(path)
   make_dir(path)
@@ -599,32 +958,74 @@ export fn clearDir(path: string) -> string {
   }
 }
 
-// Compatibiltity for versatility
+/**
+  Clear the contents of a directory safely (alternative name for `clearDir`).
+*/
 export fn empty(path: string) -> string {
   return clearDir(path)
 }
 
+/**
+  Clear the contents of a directory safely (alternative name for `clearDir`).
+*/
 export fn wipe(path: string) -> string {
   return clearDir(path)
 }
 
+/**
+  Clear the contents of a directory safely (alternative name for `clearDir`).
+*/
 export fn clean(path: string) -> string {
   return clearDir(path)
 }
 
+/**
+  Clear the contents of a directory safely (alternative name for `clearDir`).
+*/
 export fn nukeDir(path: string) -> string {
   return clearDir(path)
 }
 
 // Write to specific file formats
+
+/**
+  Save a file to .txt format.
+
+  Parameters:
+  - filename: The name of the file (without extension).
+  - content: The content to write to the file.
+
+  Returns:
+    The result of the write operation.
+*/
 export fn txt(filename: string, content: string) -> any {
   return write(filename + ".txt", content)
 }
 
+/**
+  Save a file to .md format.
+
+  Parameters:
+  - filename: The name of the file (without extension).
+  - content: The content to write to the file.
+
+  Returns:
+    The result of the write operation.
+*/
 export fn md(filename: string, content: string) -> any {
   return write(filename + ".md", content)
 }
 
+/**
+  Save a file to .json format.
+
+  Parameters:
+  - filename: The name of the file (without extension).
+  - content: The content to write to the file.
+
+  Returns:
+    The result of the write operation.
+*/
 export fn json(filename: string, content: any) -> any {
   if is_string(content) && contains(content, "{") && contains(content, "}") {
     return write(filename + ".json", content)
@@ -633,22 +1034,76 @@ export fn json(filename: string, content: any) -> any {
   }
 }
 
+/**
+  Save a file to .yaml format.
+
+  Parameters:
+  - filename: The name of the file (without extension).
+  - content: The content to write to the file.
+
+  Returns:
+    The result of the write operation.
+*/
 export fn yaml(filename: string, content: any) -> any {
   return write(filename + ".yaml", content)
 }
 
+/**
+  Save a file to .log format.
+
+  Parameters:
+  - filename: The name of the file (without extension).
+  - content: The content to write to the file.
+
+  Returns:
+    The result of the write operation.
+*/
 export fn log(filename: string, content: string) -> any {
   return addTo(filename + ".log", "\n" + content)
 }
 
+/**
+  Save a file to .csv format.
+
+  Parameters:
+  - filename: The name of the file (without extension).
+  - content: The content to write to the file.
+
+  Returns:
+    The result of the write operation.
+*/
 export fn csv(filename: string, content: any) -> any {
   return write(filename + ".csv", content)
 }
 
+/**
+  Save a file to .tsv format.
+
+  Parameters:
+  - filename: The name of the file (without extension).
+  - content: The content to write to the file.
+
+  Returns:
+    The result of the write operation.
+*/
 export fn tsv(filename: string, content: any) -> any {
   return write(filename + ".tsv", content)
 }
 
+/**
+  Save a file to .html with a structured html() template.
+
+  Parameters:
+  - title: The title of the HTML page.
+  - content: The main content of the HTML page.
+  - head: Additional content to include in the <head> section.
+  - css: CSS content or a link to a CSS file (default is "").
+  - language: The language of the HTML page (default is "en").
+  - save: Whether to save the file or just return the HTML content (default is true).
+
+  Returns:
+    The result of the write operation or the HTML content if save is false.
+*/
 export fn HTML(title: string, content: string, head: string, css: any = "", language: string = "en", save: bool = true) -> any {
   if css == "" || is_null(css) {
     css = ""
@@ -681,14 +1136,90 @@ export fn HTML(title: string, content: string, head: string, css: any = "", lang
   }
 }
 
+// For quick web pages
+
+/**
+  Save a quick file to .html without pre-fixed template.
+
+  Parameters:
+  - filename: The name of the file (without extension).
+  - content: The content to write to the file.
+
+  Returns:
+    The result of the write operation.
+*/
+export fn web(filename: string, content: any) -> any {
+  return write(filename + ".html", content)
+}
+
+/**
+  Save a file to .svg format.
+
+  Parameters:
+  - filename: The name of the file (without extension).
+  - content: The content to write to the file.
+
+  Returns:
+    The result of the write operation.
+*/
+export fn svg(filename: string, content: string) -> any {
+  return write(filename + ".svg", content)
+}
+
+/**
+  Save a file to .css format.
+
+  Parameters:
+  - filename: The name of the file (without extension).
+  - content: The content to write to the file.
+
+  Returns:
+    The result of the write operation.
+*/
+export fn css(filename: string, content: string) -> any {
+  return write(filename + ".css", content)
+}
+
+/**
+  Save a temporary file with try/catch.
+
+  Parameters:
+  - filename: The name of the file (without extension).
+  - content: The content to write to the file.
+  - ext: The file extension.
+
+  Returns:
+    The result of the write operation.
+*/
 export fn tempFile(filename: string, content: string, ext: string) {
   return write(filename + "_temp." + ext, content)
 }
 
+/**
+  Save a temporary binary file with try/catch.
+
+  Parameters:
+  - filename: The name of the file (without extension).
+  - content: The content to write to the file.
+  - ext: The file extension.
+
+  Returns:
+    The result of the write operation.
+*/
 export fn tempMedia(filename: string, content: string, ext: string) {
   return write(filename + "_temp." + ext, content, "base64")
 }
 
+/**
+  Save a temporary folder with temp files scaffolded.
+
+  Parameters:
+  - name: The name of the temporary folder.
+  - files: An array of file names to create in the folder.
+
+  Returns:
+    True if all files were successfully created, false otherwise.
+*/
 export fn tempFolder(name: string, files: array<string>) -> bool {
   let dir = "temp/" + name + "/"
   createFolder(dir)
@@ -704,17 +1235,4 @@ export fn tempFolder(name: string, files: array<string>) -> bool {
   }
 
   return true
-}
-
-// For quick web pages
-export fn web(filename: string, content: any) -> any {
-  return write(filename + ".html", content)
-}
-
-export fn svg(filename: string, content: string) -> any {
-  return write(filename + ".svg", content)
-}
-
-export fn css(filename: string, content: string) -> any {
-  return write(filename + ".css", content)
 }

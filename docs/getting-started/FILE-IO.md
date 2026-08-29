@@ -131,6 +131,29 @@ for file in files {
 
 ---
 
+## Path Inspection
+
+### `exists(path) -> bool`
+
+Checks whether a file or directory exists within the allowed filesystem boundary.
+
+```sesi
+if exists("config.json") {
+  show "Configuration found"
+}
+```
+
+### `get_ext(path) -> string`
+
+Gets a lowercase extension without the leading dot. Compound archive extensions such as `tar.gz` are preserved.
+
+```sesi
+show get_ext("photo.JPG")      // "jpg"
+show get_ext("backup.tar.gz") // "tar.gz"
+```
+
+---
+
 ## Renaming & Moving Files/Folders
 
 ### `rename(oldPath, newPath)`
@@ -164,6 +187,23 @@ archive("src/main.ts", "backup/main.ts")
 // Automatic backup to hidden cache folder: .archive/main.ts
 archive("src/main.ts")
 ```
+
+---
+
+## Archive Management
+
+### `zip(source, destination = null, operation = null)`
+
+Creates, lists, or extracts an archive. When `operation` is omitted, Sesi infers it from the source and destination.
+
+```sesi
+zip("assets", "assets.zip")           // Create
+let entries = zip("assets.zip")        // List
+zip("assets.zip", "restored")         // Extract
+zip("assets.7z", "restored", "extract")
+```
+
+ZIP-compatible formats are handled natively. The `7z`, RAR, and tar families require local mode and the corresponding system utility.
 
 ---
 
@@ -223,7 +263,10 @@ open(path, options = null) -> bool        // Open a local file or URL -> bool
 write_image(path, base64)                 // Save image -> bool
 make_dir(path)                            // Create directory recursively -> bool
 list_dir(path)                            // List folder contents -> array<string>
+exists(path)                              // Check file/directory existence -> bool
+get_ext(path)                             // Get file extension -> string
 rename(old, new)                          // Rename/move file or folder -> bool
 archive(src, dest = null)                 // Backup file/folder -> bool
+zip(source, dest = null, operation = null) // Create/list/extract archive
 trash(path, auto = false)                 // Safe trash or permanent delete -> bool
 ```

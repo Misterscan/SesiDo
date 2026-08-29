@@ -18,6 +18,7 @@ let retries: number = 3
 let title: string = "Welcome"
 let version = 1.9.0
 let active = true
+let status = any   // can hold any type of value
 let missing        // declared but uninitialized — value is null
 ```
 
@@ -31,9 +32,14 @@ After declaration, a variable can be reassigned using `=` without repeating `let
 
 ```sesi
 let count = 0
+let status = any
+status = "active"   // reassigning a variable of type `any`
+status = 1         // reassigning a variable of type `any` to a number
+status = {"active": true}   // reassigning a variable of type `any` to an object
 count = count + 1
 count = count + 1
 show count        // 2
+show status.active   // true
 ```
 
 Object fields and array elements can also be mutated directly:
@@ -60,6 +66,7 @@ Sesi infers the type of a variable from its assigned value. The primitive types 
 | `string` | `str` | `let msg = "hello"`            |
 | `bool`   | —     | `let ready = true`             |
 | `null`   | —     | `let empty = null`             |
+| `any`    | —     | `let value = any`              |
 
 Collection types are also supported:
 
@@ -90,10 +97,24 @@ let tags: array<string> = ["sesi", "lang"]
 
 ### The `any` Type
 
-`any` accepts any value and bypasses type checking. Use it in function signatures when the argument type is genuinely variable:
+`any` accepts values of every type and bypasses type checking. It can be used as a type annotation or as a variable initializer.
 
 ```sesi
 fn display(value: any) { show value }
+
+let result: any = "pending"
+result = 200
+result = {"complete": true}
+```
+
+Using `any` directly as an initializer creates an unrestricted variable with an initial runtime value of `null`:
+
+```sesi
+let status = any
+show status             // null
+status = "active"
+status = 1
+status = {"active": true}
 ```
 
 ### Optional Types (`T?`)
@@ -207,6 +228,7 @@ let count   = 3
 let title   = "Daily Report"
 let ready   = true
 let missing = null
+let flexible = any
 
 // Collections
 let scores  = [10, 20, 30]

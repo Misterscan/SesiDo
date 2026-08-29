@@ -11,7 +11,7 @@ allow "std/audio" in as <alias>
 allow "std/theory" in as <alias>
 ```
 
-`allow` loads a module and binds it to any identifier you choose — the name after `with` is just a local namespace alias. These are all equally valid:
+`allow` loads a module and binds it to any identifier you choose — the name after `as` is just a local namespace alias. These are all equally valid:
 
 ```sesi
 allow "std/audio" in as Audio      // conventional

@@ -517,6 +517,18 @@ Draw.clear()                       // reset buffer
 ```sesi
 Draw.pixel(x, y, color)
 Draw.pixel_grid(grid, palette, scale?, x?, y?)
+Draw.pixel_rect(x, y, w, h, color, filled?)
+Draw.pixel_circle(cx, cy, r, color, filled?)
+Draw.pixel_line(x1, y1, x2, y2, color)
+Draw.pixel_ellipse(cx, cy, rx, ry, color, filled?)
+Draw.pixel_polygon(points, color, filled?)
+Draw.pixel_triangle(x1, y1, x2, y2, x3, y3, color, filled?)
+Draw.pixel_star(cx, cy, spikes, outerRadius, innerRadius, color, filled?)
+Draw.pixel_ring(cx, cy, radius, thickness, color)
+Draw.pixel_arc(cx, cy, radius, startAngle, endAngle, color)
+Draw.pixel_bezier(x1, y1, cx, cy, x2, y2, color)
+Draw.pixel_path(d, color, filled?)
+Draw.pixel_text(x, y, text, color, scale?)
 Draw.save_png(path, width, height, background?)
 ```
 
@@ -782,16 +794,22 @@ show actual["total_tokens"] actual["total_cost_usd"]
 
 These are deliberately separate: `tokenize()` is local and returns IDs, `count_tokens()` asks the selected provider for an exact request count, and `estimate_tokens()` is the explicit offline approximation.
 
-### Math & Randomness (Must be used as "std/math")
+### Math & Randomness
 
-| Function                        | Description       |
-| ------------------------------- | ----------------- |
-| `random()` // Readily available | Float in `[0, 1)` |
-| `floor(n)`                      | Round down        |
-| `ceil(n)`                       | Round up          |
-| `abs(n)`                        | Absolute value    |
-| `pow(b, e)`                     | Exponentiation    |
-| `sqrt(n)`                       | Square root       |
+`random()` and `floor(value)` are globally available. Import `std/math` for the complete stable JavaScript `Math` surface supported by Node.js 20+:
+
+```sesi
+allow "std/math" in as Math
+
+show floor(3.9)             // 3; global
+show Math.atan2(1, 0)       // 1.5707963267948966
+show Math.hypot(3, 4)       // 5
+show Math.min(8, 3, 5)      // 3
+```
+
+Constants: `E`, `LN10`, `LN2`, `LOG10E`, `LOG2E`, `PI`, `SQRT1_2`, `SQRT2`.
+
+Functions: `abs`, `acos`, `acosh`, `asin`, `asinh`, `atan`, `atanh`, `atan2`, `cbrt`, `ceil`, `clz32`, `cos`, `cosh`, `exp`, `expm1`, `floor`, `fround`, `hypot`, `imul`, `log`, `log1p`, `log2`, `log10`, `max`, `min`, `pow`, `random`, `round`, `sign`, `sin`, `sinh`, `sqrt`, `tan`, `tanh`, `trunc`.
 
 ### File I/O
 
@@ -1071,5 +1089,7 @@ fn update(dt) { cube.rotation.y = cube.rotation.y + dt }
 game.on_update(update)
 game.run()
 ```
+
+Game scenes use left-handed coordinates: Y is up, `+X` is right, and `+Z` is forward. Relative generated and registered asset paths both resolve from the current working directory.
 
 Read [getting-started/GAME.md](getting-started/GAME.md) for the complete scenes, assets, physics, input, GUI, audio, storage, permissions, and build API.
