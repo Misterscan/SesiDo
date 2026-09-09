@@ -99,8 +99,8 @@ make JobQueue {
     - `retries`: Maximum attempts per request.
   */
   let settings = {
-    "hosts": ["https://primary.example", "https://backup.example"],
-    "retries": 3
+    hosts: ["https://primary.example", "https://backup.example"],
+    retries: 3
   }
   
   /** Pending job objects in insertion order. */

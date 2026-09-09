@@ -95,7 +95,7 @@ open("images/logo.png", {image_viewer: "Preview"})
 Writes binary image content (e.g., base64-encoded string returned from image-generation models) into a file:
 
 ```sesi
-let logo_data = image("gemini-3.1-flash-image-preview") {"design a simple Sesi language logo"}
+let logo_data = image("gemini-3.1-flash-image") {"design a simple Sesi language logo"}
 try {
   write_image("logo.png", logo_data)
   show "Saved logo.png successfully"
@@ -123,11 +123,13 @@ Lists the contents of a directory and returns them as an array of filenames/fold
 ```sesi
 let files = list_dir(".")
 for file in files {
-  if contains(file, ".sesi") {
+  if get_ext(file) == "sesi" {
     show "Found script:" file
   }
 }
 ```
+
+Results use natural filename order, so numbered names such as `frame_2.png` come before `frame_10.png`.
 
 ---
 
@@ -250,6 +252,12 @@ if homeDir != null {
 }
 ```
 
+You can also use `$` for Unix-style environment variable expansion in paths.
+```sesi
+let configPath = $HOME + "/.config/sesi"
+show "Config path:" configPath
+```
+
 ---
 
 ## Quick Reference
@@ -269,4 +277,5 @@ rename(old, new)                          // Rename/move file or folder -> bool
 archive(src, dest = null)                 // Backup file/folder -> bool
 zip(source, dest = null, operation = null) // Create/list/extract archive
 trash(path, auto = false)                 // Safe trash or permanent delete -> bool
+env(name, default = null)                  // Get environment variable -> string or null
 ```

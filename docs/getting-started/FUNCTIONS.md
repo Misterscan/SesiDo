@@ -39,6 +39,11 @@ Any comment format works, and a plain description is enough. The preferred schem
 
   Returns:
    The sum of `a` and `b`.
+
+  Example:
+  ```sesi
+  show add(2, 3)   // 5
+  ```
 */
 fn add(a: number, b: number) -> number {
   return a + b
@@ -100,7 +105,7 @@ fn format(label: str, value: num) {
 
 ## Return Values
 
-Use `return` inside a `fn` block to send a value back to the caller. `return` is **only valid inside `fn` blocks** — it is not a top-level statement.
+Use `return` inside a `fn` block to send a value back to the caller. `return` is also valid at the top level, where it immediately stops the current script or module. A top-level return value is accepted, but there is no caller to receive it, so a bare `return` is usually clearest for early exits.
 
 ```sesi
 fn square(x: number) {

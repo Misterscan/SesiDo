@@ -167,7 +167,7 @@ When defining or recommending new tools in your scripts for the users use, you h
 fn analyze_code_complexity(path: string) {
     let content = read_file(path)
     // Sophisticated analysis logic here...
-    return {"complexity": "High", "hotspots": ["main.sesi:42"]}
+    return {complexity: "High", hotspots: ["main.sesi:42"]}
 }
 
 define_tool("analyze_complexity", analyze_code_complexity, "Performs a deep structural audit of a Sesi file to identify technical debt.")

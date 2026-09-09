@@ -594,8 +594,8 @@ allow "std/draw" in as Draw
 
 // 1. Define a radial gradient for a neon glow
 Draw.gradient("radial", "glow_grad", [
-  {"offset": "0%", "color": "#ff00ff"},
-  {"offset": "100%", "color": "transparent"}
+  {offset: "0%", color: "#ff00ff"},
+  {offset: "100%", color: "transparent"}
 ])
 
 // 2. Define standard CSS animations for pulsating and spinning
@@ -613,7 +613,7 @@ Draw.style("
 
 // 3. Draw using options to bind classes and gradients
 Draw.rect(0, 0, 400, 400, "#0a0018")
-Draw.circle(200, 200, 100, "url(#glow_grad)", {"class": "pulse"})
+Draw.circle(200, 200, 100, "url(#glow_grad)", {class: "pulse"})
 Draw.ellipse(200, 200, 50, 25, "#00ffff")
 
 Draw.save_svg("neon.svg", 400, 400)

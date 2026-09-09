@@ -74,7 +74,7 @@ Sesi ships with built-in standard library modules:
 | `std/math` | `Math`    | Math operations                                  |
 | `std/time` | `Time`    | Time/date functions                              |
 | `std/db`   | —         | Database access                                  |
-| `std/game` | `Game`    | Optional Babylon-powered 3D desktop game engine |
+| `std/game` | `Game`    | Optional Babylon-powered 3D desktop game engine  |
 ... and more!
 
 ```sesi
@@ -83,8 +83,13 @@ allow "std/time" in as Time
 allow "std/game" in as Game
 
 show Math.PI
+show Math.atan2(1, 0)
+show Math.min(8, 3, 5)
+show Math.floor(3.9) // floor is globally available too
 show Time.now()
 ```
+
+`std/math` provides the complete stable JavaScript `Math` surface supported by Node.js 20+.
 
 `std/game` requires `npm install @misterscan/sesi-game` and local mode (`sesi -l`). Its complete API is in [GAME.md](GAME.md).
 
@@ -198,7 +203,7 @@ import { greet, VERSION } from "mymodule"
 allow "mymodule" in with { greet, VERSION }
 
 // allow (namespace)
-allow "mymodule" in with Mod
+allow "mymodule" in as Mod
 Mod.greet("Ada")
 
 // Standard library

@@ -11,7 +11,7 @@ npm install @misterscan/sesi-game
 Run game scripts in local mode. Safe mode intentionally refuses to launch Electron or build an application:
 
 ```bash
-sesi -l examples/main/37_game_3d_arcade.sesi
+sesi -l examples/main/38_game_3d_arcade.sesi
 ```
 
 ## First scene
@@ -20,27 +20,27 @@ sesi -l examples/main/37_game_3d_arcade.sesi
 allow "std/game" in as Game
 
 let game = Game.create({
-  "title": "My First 3D Game",
-  "width": 1280,
-  "height": 720,
-  "resizable": true,
-  "background": "#07111f"
+  title: "My First 3D Game",
+  width: 1280,
+  height: 720,
+  resizable: true,
+  background: "#07111f"
 })
 
 let scene = game.create_scene("main")
 let camera = scene.orbit_camera("camera", {
-  "alpha": -1.57,
-  "beta": 1.0,
-  "radius": 12,
-  "target": Game.vec3(0, 1, 0)
+  alpha: -1.57,
+  beta: 1.0,
+  radius: 12,
+  target: Game.vec3(0, 1, 0)
 })
-let sun = scene.hemispheric_light("sun", {"intensity": 0.9})
+let sun = scene.hemispheric_light("sun", {intensity: 0.9})
 let material = scene.pbr_material("player_material", {
-  "color": Game.color("#36d1ff"),
-  "metallic": 0.15,
-  "roughness": 0.45
+  color: Game.color("#36d1ff"),
+  metallic: 0.15,
+  roughness: 0.45
 })
-let player = scene.box("player", {"position": Game.vec3(0, 1, 0)})
+let player = scene.box("player", {position: Game.vec3(0, 1, 0)})
 player.material = material
 
 fn update(dt) {
@@ -123,7 +123,7 @@ Register assets before using them:
 
 ```sesi
 game.assets.add("ship", "model", "assets/ship.glb")
-game.assets.add("metal", "texture", "assets/metal.png", {"checksum": "sha256:..."})
+game.assets.add("metal", "texture", "assets/metal.png", {checksum: "sha256:..."})
 game.assets.add("sky", "environment", "https://cdn.example.com/sky.env")
 game.assets.add("impact", "audio", "assets/impact.ogg")
 game.assets.add("ui", "font", "assets/Inter.woff2")
@@ -142,7 +142,7 @@ allow "std/draw" in as Draw
 allow "std/audio" in as Audio
 
 make_dir("assets")
-Draw.pixel_grid(["YY", "YY"], {"Y": "#facc15"}, 16)
+Draw.pixel_grid(["YY", "YY"], {Y: "#facc15"}, 16)
 Draw.save_png("assets/coin.png", 32, 32, "transparent")
 Audio.save("assets/pickup.wav", "E6", 90, "sine")
 
@@ -156,16 +156,14 @@ Pass a registered texture asset name or local image path to `game.run`. When `ic
 
 ```sesi
 game.assets.add("app_icon", "texture", "assets/app-icon.png")
-game.run({"icon": "app_icon"})
-game.build("build/MyGame", {"icon": "app_icon"})
+game.run({icon: "app_icon"})
+game.build("build/MyGame", {icon: "app_icon"})
 ```
 
 `game.build` embeds the icon, converts it to the host platform's native application-icon format, and applies it to the packaged executable/app bundle. If the build option is omitted, a registered texture named `icon` is used automatically; otherwise Sesi packages its default placeholder. PNG and JPEG work across desktop platforms; ICO and ICNS are also accepted. You can create a custom logo with `image()`:
 
 ```sesi
-let logo = image("gemini-3.1-flash-image") {ratio: "1:1", size: "512"} {
-  "A bold square app logo for a colorful arcade game"
-}
+let logo = image("gemini-3.1-flash-image") {ratio: "1:1", size: "512"} {"A bold square app logo for a colorful arcade game"}
 write_image("assets/app-icon.png", logo)
 ```
 
@@ -188,12 +186,12 @@ Draw.save_png("assets/app-icon.png", 128, 128, "#07111f")
 Each primitive takes a unique name and optional object:
 
 ```sesi
-let box = scene.box("box", {"width": 2, "height": 1, "depth": 3})
-let sphere = scene.sphere("ball", {"diameter": 1, "segments": 24})
-let plane = scene.plane("sign", {"width": 4, "height": 2})
-let ground = scene.ground("ground", {"width": 30, "height": 30, "subdivisions": 2})
-let pillar = scene.cylinder("pillar", {"height": 4, "diameter": 1})
-let ship = scene.load_model("ship", "ship_asset", {"position": Game.vec3(0, 1, 0)})
+let box = scene.box("box", {width: 2, height: 1, depth: 3})
+let sphere = scene.sphere("ball", {diameter: 1, segments: 24})
+let plane = scene.plane("sign", {width: 4, height: 2})
+let ground = scene.ground("ground", {width: 30, height: 30, subdivisions: 2})
+let pillar = scene.cylinder("pillar", {height: 4, diameter: 1})
+let ship = scene.load_model("ship", "ship_asset", {position: Game.vec3(0, 1, 0)})
 ```
 
 `create_box`, `create_sphere`, `create_plane`, `create_ground`, and `create_cylinder` are aliases. Live transform fields are `position`, `rotation`, and `scaling`; their components can be updated in place. Meshes also expose `enabled`, `visible`, `material`, and `metadata`.
@@ -205,14 +203,14 @@ Use `scene.get(name)`, `scene.remove(object)`, `scene.intersects(left, right)`, 
 ## Cameras and lights
 
 ```sesi
-scene.free_camera("free", {"position": Game.vec3(0, 2, -8)})
-scene.orbit_camera("orbit", {"alpha": -1.57, "beta": 1.1, "radius": 14})
-scene.follow_camera("follow", {"position": Game.vec3(0, 4, -10)})
+scene.free_camera("free", {position: Game.vec3(0, 2, -8)})
+scene.orbit_camera("orbit", {alpha: -1.57, beta: 1.1, radius: 14})
+scene.follow_camera("follow", {position: Game.vec3(0, 4, -10)})
 
-scene.hemispheric_light("ambient", {"intensity": 0.6})
-scene.directional_light("sun", {"direction": Game.vec3(-1, -2, 1)})
-scene.point_light("lamp", {"position": Game.vec3(0, 4, 0), "range": 20})
-scene.spot_light("spot", {"position": Game.vec3(0, 6, 0), "direction": Game.vec3(0, -1, 0)})
+scene.hemispheric_light("ambient", {intensity: 0.6})
+scene.directional_light("sun", {direction: Game.vec3(-1, -2, 1)})
+scene.point_light("lamp", {position: Game.vec3(0, 4, 0), range: 20})
+scene.spot_light("spot", {position: Game.vec3(0, 6, 0), direction: Game.vec3(0, -1, 0)})
 ```
 
 Camera fields include `position`, `rotation`, `target`, `fov`, `min_z`, `max_z`, and `active`. Lights expose `position`, `direction`, `color`, `intensity`, `range`, and `angle` where applicable.
@@ -221,15 +219,15 @@ Camera fields include `position`, `rotation`, `target`, `fov`, `min_z`, `max_z`,
 
 ```sesi
 let matte = scene.standard_material("matte", {
-  "diffuse": Game.color("#4da3ff"),
-  "emissive": Game.color(0, 0, 0),
-  "alpha": 1
+  diffuse: Game.color("#4da3ff"),
+  emissive: Game.color(0, 0, 0),
+  alpha: 1
 })
 
 let chrome = scene.pbr_material("chrome", {
-  "color": Game.color("#dce8ff"),
-  "metallic": 1,
-  "roughness": 0.15
+  color: Game.color("#dce8ff"),
+  metallic: 1,
+  roughness: 0.15
 })
 
 player.material = chrome
@@ -264,14 +262,14 @@ Actions support `down`, `pressed`, and `released`. The input service also expose
 Physics is opt-in per scene:
 
 ```sesi
-scene.enable_physics({"gravity": Game.vec3(0, -9.81, 0)})
-scene.add_body(ground, {"type": "static", "shape": "box", "friction": 0.8})
+scene.enable_physics({gravity: Game.vec3(0, -9.81, 0)})
+scene.add_body(ground, {type: "static", shape: "box", friction: 0.8})
 scene.add_body(player, {
-  "type": "dynamic",
-  "shape": "capsule",
-  "mass": 1,
-  "friction": 0.4,
-  "restitution": 0.1
+  type: "dynamic",
+  shape: "capsule",
+  mass: 1,
+  friction: 0.4,
+  restitution: 0.1
 })
 ```
 
@@ -297,9 +295,9 @@ let hit = scene.raycast(
 if hit.hit { show hit.object.name hit.point }
 
 scene.animate(player, "rotation.y", 6.28318, {
-  "duration": 2,
-  "loop": true,
-  "easing": "linear"
+  duration: 2,
+  loop: true,
+  easing: "linear"
 })
 ```
 
@@ -308,19 +306,19 @@ Loaded glTF animation groups remain associated with their model. `scene.animate`
 ## Sound and GUI
 
 ```sesi
-scene.play_sound("impact", {"volume": 0.8, "spatial": true, "position": player.position})
+scene.play_sound("impact", {volume: 0.8, spatial: true, position: player.position})
 
 let title = scene.gui_text("title", {
-  "text": "SCORE 0",
-  "color": "white",
-  "width": "220px",
-  "height": "52px",
-  "left": "24px",
-  "top": "20px",
-  "horizontal_alignment": "left",
-  "vertical_alignment": "top"
+  text: "SCORE 0",
+  color: "white",
+  width: "220px",
+  height: "52px",
+  left: "24px",
+  top: "20px",
+  horizontal_alignment: "left",
+  vertical_alignment: "top"
 })
-let button = scene.gui_button("restart", {"text": "Restart", "background": "#19324d"})
+let button = scene.gui_button("restart", {text: "Restart", background: "#19324d"})
 
 fn restart() { game.activate_scene("main") }
 button.on_click(restart)
@@ -345,11 +343,11 @@ Values are JSON-compatible and isolated by the game's storage name.
 
 ```sesi
 if includes(args, "--build") {
-  game.build("build/MyGame", {"overwrite": true})
+  game.build("build/MyGame", {overwrite: true})
   // Compress the build output into a single archive file for easier distribution.
   zip("build/MyGame", "MyGame.zip")
 } else {
-  game.run({"inspector": true})
+  game.run({inspector: true})
 }
 ```
 
@@ -365,14 +363,14 @@ Permissions are deny-by-default and declared in `Game.create`:
 
 ```sesi
 let game = Game.create({
-  "title": "Networked Scores",
-  "permissions": {
-    "network": ["https://scores.example.com"],
-    "external_links": ["https://example.com"],
-    "filesystem": ["app_assets", "user_data", "temp"],
-    "clipboard": false,
-    "localhost_server": false,
-    "process": ["platform", "arch"]
+  title: "Networked Scores",
+  permissions: {
+    network: ["https://scores.example.com"],
+    external_links: ["https://example.com"],
+    filesystem: ["app_assets", "user_data", "temp"],
+    clipboard: false,
+    localhost_server: false,
+    process: ["platform", "arch"]
   }
 })
 ```
@@ -381,6 +379,6 @@ Navigation and new windows are denied. Electron uses `contextIsolation: true` an
 
 ## Debugging
 
-Pass `{"debug": true}` to `Game.create` and `{"inspector": true}` to `game.run` to enable Babylon Inspector during development. Use `str(handle)`, `type(handle)`, `keys(handle)`, and `values(handle)` for safe native-object introspection. The runtime preserves object identity and bound method identity.
+Pass `{debug: true}` to `Game.create` and `{inspector: true}` to `game.run` to enable Babylon Inspector during development. Use `str(handle)`, `type(handle)`, `keys(handle)`, and `values(handle)` for safe native-object introspection. The runtime preserves object identity and bound method identity.
 
 Common typed failures include `SecurityError`, `GameAddonError`, `GameStateError`, `SceneError`, `AssetError`, `PhysicsError`, `NativePropertyError`, `ReadOnlyPropertyError`, `CrossSceneError`, `DisposedObjectError`, and `AsyncCallbackError`.
