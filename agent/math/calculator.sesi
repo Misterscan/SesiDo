@@ -1,2 +1,2 @@
 // SesiDo Calculator Tool
-allow "../../build/index" in as SesiDo; set_alias("SesiDo-Flash", "gemini-3-flash-preview"); let logTag = "[" + SesiDo.universalTime + "]"; show logTag + " [CALCULATOR]"; SesiDo.calculator(args); show "[CALCULATOR ENDED]"
+allow "../../build/index" in as SesiDo; let logTag = "[" + SesiDo.universalTime + "]"; show logTag + " [CALCULATOR]"; SesiDo.calculator({query: args[0]}); show "[CALCULATOR ENDED]"

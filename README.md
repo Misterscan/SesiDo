@@ -77,48 +77,45 @@ You can also use other models by changing the alias in the `index.sesi` file.
 On top of that, you can use specific variables exported by the index.sesi file.
 
 ```sesi
-allow "SesiDo/build" in with Config
+allow "SesiDo/build" in as Config
 
 export let modelNames = Config.sesiDoModels
 export let ogNames = Config.ogNames
-export let defaultModel = Config.sesiDoModels[0]
-export let defaultOgName = Config.ogNames[0]
-export let effortLevel = Config.mediumTemp
-export let reasoningLevel = Config.lowThink
+export let defaultModel = Config.sesiDoModels[9]
+export let defaultOgName = Config.ogNames[9]
+export let reasoningLevel = Config.mediumThink
 export let search = Config.searchGoogle
 export let currentTime = Config.localTime
 export let fileTimestamp = Config.formattedTime
+Config.setModel(defaultModel, defaultOgName)
 
-export fn settings(){
-
+export fn settings() {
    prompt log {"
    ====== CURRENT SETTINGS ======
 
-   Current Time: " currentTime "
+   Current Time: "currentTime"
    - Filenames saved with a timestamp will look like:
-      test-" fileTimestamp ".txt
+      test-"fileTimestamp".txt
    Available aliases:
-   " modelNames "
+   "modelNames"
    Available models:
-   " ogNames "
+   "ogNames"
 
-   Current alias: " defaultModel "
-   Using model: " defaultOgName "
-   temperature: " effortLevel "
-   " search " is active
-   thinkingLevel: " reasoningLevel "
+   Current alias: "defaultModel"
+   Using model: "defaultOgName"
+   "search" is active
+   thinking: "reasoningLevel"
    ============================
    "}
-   show log
+   return log
 }
 
 /*
    Now write your own scripts!
 
    Test example:
-   allow "settings" in with SesiDo
-   SesiDo.settings()
-   set_alias(SesiDo.defaultModel, SesiDo.defaultOgName)
+   allow "settings" in as SesiDo
+   show SesiDo.settings()
    ...the rest of your script...
 
    Run it and see the output.
@@ -131,18 +128,17 @@ The output of Custom.settings() should look like:
 ```bash
 ====== CURRENT SETTINGS ======
 
-Current Time: 9/09/2026
-- Filenames saved with a timestamp will look like: test-20260909121134.txt
+Current Time: 10/12/2026
+- Filenames saved with a timestamp will look like: test-10-12-26-11-54-21-AM.txt
 Available aliases:
  ["SesiDo", "SesiDo-Exp", "SesiDo-Pro", "SesiDo-Lite", "SesiDo-Lite-Power", "SesiDo-Flash", "SesiDo-Image", "SesiDo-Image-Lite", "SesiDo-Video", "SesiDo-GPT", "SesiDo-GPT-Pro", "SesiDo-GPT-Lite", "SesiDo-GPT-Image"]
 Available models:
- ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-3.1-flash-image", "gemini-3.1-flash-lite-image", "veo-3.1-lite-generate-preview", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-image-2"]
+ ["gemini-3.6-flash", "gemini-3.8-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-nano-banana-2.1", "gemini-3.1-flash-lite-image", "gemini-omni-1.1-flash", "gpt-6.1-sol", "gpt-6-astra", "gpt-6-luna", "gpt-image-2.5-flare"]
 
 Current alias: SesiDo
-Using model: gemini-3.7-flash
-temperature: 0.5
+Using model: gpt-6.1-sol
 search is active
-thinkingLevel: "low"
+thinkingLevel: "medium"
 ============================
 ```
 
@@ -154,17 +150,17 @@ Now you're ready to use SesiDo!
 
 | Function        | Arguments                              | Result                                                          |
 | --------------- | -------------------------------------- | --------------------------------------------------------------- |
-| `writeCode`     | `{"query": "..."}`                     | Generates a code response.                                      |
-| `research`      | `{"query": "..."}`                     | Researches a topic and saves a report.                          |
-| `summarize`     | `{"text": "..."}` or `{"path": "..."}` | Summarizes text or a local file.                                |
-| `calculator`    | `{"expression": "..."}`                | Calculates an expression.                                       |
-| `createSVG`     | `{"description": "..."}`               | Generates and renders SVG artwork.                              |
-| `drawPixelArt`  | `{"description": "..."}`               | Generates and renders pixel art.                                |
-| `drawImage`     | `{"description": "..."}`               | Generates and renders an image.                                 |
-| `generateImage` | `{"query": "..."}`                     | Generates an image.                                             |
-| `generateVideo` | `{"query": "...", "duration": 4, "negative": "..."}` | Generates and verifies an MP4 video.                 |
-| `getImageInfo`  | `{"path": "..."}`                      | Analyzes an image.                                              |
-| `browsePage`    | `{"url": "...", "operation": "fetch"}` | Fetches, extracts, researches, analyzes, or screenshots a page. |
+| `writeCode`     | `{query: "..."}`                       | Generates a code response.                                      |
+| `research`      | `{query: "..."}`                       | Researches a topic and saves a report.                          |
+| `summarize`     | `{text: "..."}` or `{path: "..."}`     | Summarizes text or a local file.                                |
+| `calculator`    | `{expression: "..."}`                  | Calculates an expression.                                       |
+| `createSVG`     | `{description: "..."}`                 | Generates and renders SVG artwork.                              |
+| `drawPixelArt`  | `{description: "..."}`                 | Generates and renders pixel art.                                |
+| `drawImage`     | `{description: "..."}`                 | Generates and renders an image.                                 |
+| `generateImage` | `{query: "..."}`                       | Generates an image.                                             |
+| `generateVideo` | `{query: "...", duration: 4, negative: "..."}` | Generates and verifies an MP4 video.                    |
+| `getImageInfo`  | `{path: "..."}`                        | Analyzes an image.                                              |
+| `browsePage`    | `{url: "...", operation: "fetch"}`     | Fetches, extracts, researches, analyzes, or screenshots a page. |
 
 `main()` is also exported for projects that intentionally want to launch the interactive chat loop.
 
@@ -176,7 +172,7 @@ The repository includes standalone wrappers for manually running the same workfl
 | ---------------------------------- | ------------------------------------------------------ |
 | `npm run gen:code "prompt"`        | Generate a code response.                              |
 | `npm run gen:image "prompt"`       | Generate an image.                                     |
-| `npm run gen:video "prompt" 4 "no captions or logos"` | Generate a video.                         |
+| `npm run gen:video "prompt" 4 "no captions or logos"` | Generate a video.                   |
 | `npm run gen:pixel "prompt"`       | Generate and render pixel art.                         |
 | `npm run draw:image "prompt"`      | Generate and render an image.                          |
 | `npm run gen:svg "prompt"`         | Generate and render an SVG.                            |
@@ -198,19 +194,19 @@ The module registers these aliases from `index.sesi` when it is imported.
 
 | Alias               | Configured model              |
 | ------------------- | ----------------------------- |
-| `SesiDo`            | `gemini-3.7-flash`            |
-| `SesiDo-Exp`        | `gemini-3.6-flash`            |
+| `SesiDo`            | `gemini-3.6-flash`            |
+| `SesiDo-Exp`        | `gemini-3.8-flash`            |
 | `SesiDo-Pro`        | `gemini-3.1-pro-preview`      |
 | `SesiDo-Lite`       | `gemini-3.1-flash-lite`       |
 | `SesiDo-Lite-Power` | `gemini-3.5-flash-lite`       |
 | `SesiDo-Flash`      | `gemini-3-flash-preview`      |
-| `SesiDo-Image`      | `gemini-3.1-flash-image`      |
+| `SesiDo-Image`      | `gemini-nano-banana-2.1`      |
 | `SesiDo-Image-Lite` | `gemini-3.1-flash-lite-image` |
-| `SesiDo-Video`      | `veo-3.1-lite-generate-preview` |
-| `SesiDo-GPT`        | `gpt-5.6-terra`               |
-| `SesiDo-GPT-Pro`    | `gpt-5.6-sol`                 |
-| `SesiDo-GPT-Lite`   | `gpt-5.6-luna`                |
-| `SesiDo-GPT-Image`  | `gpt-image-2`                 |
+| `SesiDo-Video`      | `gemini-omni-1.1-flash`       |
+| `SesiDo-GPT`        | `gpt-6.1-sol`                 |
+| `SesiDo-GPT-Pro`    | `gpt-6-astra`                 |
+| `SesiDo-GPT-Lite`   | `gpt-6-luna`                  |
+| `SesiDo-GPT-Image`  | `gpt-image-2.5-flare`         |
 
 Override an alias from a consuming script with `SesiDo.setModel(alias, modelName)`.
 
@@ -224,6 +220,7 @@ Override an alias from a consuming script with `SesiDo.setModel(alias, modelName
 - `agent/ops/`: Agent operations.
 - `agent/math/`: Agent math utilities.
 - `agent/generate/`: Agent generation scripts.
+- `agent/mcp/`: Agent MCP utilities.
 - `utils/`: Safe-guarded utilities with error-handling.
 - `database/`: Self-referential documentation for SesiDo Agents.
 - `SesiDo/.artifacts/`: Artifacts generated by SesiDo Agents.

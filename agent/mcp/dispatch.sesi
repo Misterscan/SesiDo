@@ -12,19 +12,7 @@ allow "helpers/safe" in as Safe
 allow "../../build/index" in as SesiDo
 
 // Set model aliases for agents invoked via MCP dispatch
-set_alias("SesiDo", "gemini-3.7-flash")
-set_alias("SesiDo-Exp", "gemini-3.6-flash")
-set_alias("SesiDo-Pro", "gemini-3.1-pro-preview")
-set_alias("SesiDo-Lite", "gemini-3.1-flash-lite")
-set_alias("SesiDo-Lite-Power", "gemini-3.5-flash-lite")
-set_alias("SesiDo-Flash", "gemini-3-flash-preview")
-set_alias("SesiDo-Image", "gemini-3.1-flash-image")
-set_alias("SesiDo-Image-Lite", "gemini-3.1-flash-lite-image")
-set_alias("SesiDo-Video", "veo-3.1-lite-generate-preview")
-set_alias("SesiDo-GPT", "gpt-5.6-terra")
-set_alias("SesiDo-GPT-Pro", "gpt-5.6-sol")
-set_alias("SesiDo-GPT-Lite", "gpt-5.6-luna")
-set_alias("SesiDo-GPT-Image", "gpt-image-2")
+SesiDo.setModel()
 
 let resultPrefix = "__SESIDO_MCP_RESULT__="
 let action = ""
@@ -33,7 +21,7 @@ let task = null
 
 fn summarizeFile(path) {
     let source = Safe.read(path)
-    return SesiDo.summarize({"text": source})
+    return SesiDo.summarize({text: source})
 }
 
 fn isFailure(value) {
@@ -50,25 +38,25 @@ try {
         if len(args) < 2 {
             result = "Error: write_code requires a query."
         } else {
-            task = lazy(SesiDo.writeCode, {"query": args[1]})
+            task = lazy(SesiDo.writeCode, {query: args[1]})
         }
     } else if action == "debug_code" {
         if len(args) < 2 {
             result = "Error: debug_code requires a path."
         } else {
-            task = lazy(SesiDo.debugCode, {"path": args[1]})
+            task = lazy(SesiDo.debugCode, {path: args[1]})
         }
     } else if action == "research" {
         if len(args) < 2 {
             result = "Error: research requires a query."
         } else {
-            task = lazy(SesiDo.research, {"query": args[1]})
+            task = lazy(SesiDo.research, {query: args[1]})
         }
     } else if action == "summarize_text" {
         if len(args) < 2 {
             result = "Error: summarize_text requires text."
         } else {
-            task = lazy(SesiDo.summarize, {"text": args[1]})
+            task = lazy(SesiDo.summarize, {text: args[1]})
         }
     } else if action == "summarize_file" {
         if len(args) < 2 {
@@ -80,55 +68,55 @@ try {
         if len(args) < 2 {
             result = "Error: calculate requires an expression."
         } else {
-            task = lazy(SesiDo.calculator, {"expression": args[1]})
+            task = lazy(SesiDo.calculator, {expression: args[1]})
         }
     } else if action == "create_svg" {
         if len(args) < 2 {
             result = "Error: create_svg requires a description."
         } else {
-            task = lazy(SesiDo.createSVG, {"description": args[1]})
+            task = lazy(SesiDo.createSVG, {description: args[1]})
         }
     } else if action == "draw_pixel_art" {
         if len(args) < 2 {
             result = "Error: draw_pixel_art requires a description."
         } else {
-            task = lazy(SesiDo.drawPixelArt, {"description": args[1]})
+            task = lazy(SesiDo.drawPixelArt, {description: args[1]})
         }
     } else if action == "draw_image" {
         if len(args) < 2 {
             result = "Error: draw_image requires a description."
         } else {
-            task = lazy(SesiDo.drawImage, {"description": args[1]})
+            task = lazy(SesiDo.drawImage, {description: args[1]})
         }
     } else if action == "generate_image" {
         if len(args) < 2 {
             result = "Error: generate_image requires a prompt."
         } else {
-            task = lazy(SesiDo.generateImage, {"query": args[1]})
+            task = lazy(SesiDo.generateImage, {query: args[1]})
         }
     } else if action == "generate_video" {
         if len(args) < 4 {
             result = "Error: generate_video requires a prompt, duration, and negative prompt."
         } else {
             task = lazy(SesiDo.generateVideo, {
-                "query": args[1],
-                "duration": num(args[2]),
-                "negative": args[3]
+                query: args[1],
+                duration: num(args[2]),
+                negative: args[3]
             })
         }
     } else if action == "inspect_image" {
         if len(args) < 2 {
             result = "Error: inspect_image requires a path."
         } else {
-            task = lazy(SesiDo.getImageInfo, {"path": args[1]})
+            task = lazy(SesiDo.getImageInfo, {path: args[1]})
         }
     } else if action == "browse_page" {
         if len(args) < 3 {
             result = "Error: browse_page requires a URL and operation."
         } else {
             task = lazy(SesiDo.browsePage, {
-                "url": args[1],
-                "operation": args[2]
+                url: args[1],
+                operation: args[2]
             })
         }
     } else {
@@ -143,9 +131,9 @@ try {
 }
 
 let envelope = {
-    "ok": !isFailure(result),
-    "action": action,
-    "result": str(result)
+    ok: !isFailure(result),
+    action: action,
+    result: str(result)
 }
 
 show resultPrefix + to_json(envelope)

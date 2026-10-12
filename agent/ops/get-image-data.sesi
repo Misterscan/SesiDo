@@ -1,2 +1,2 @@
 // SesiDo Get Image Data Tool
-allow "../../build/index" in as SesiDo; set_alias("SesiDo-Flash", "gemini-3-flash-preview"); let logTag = "[" + SesiDo.universalTime + "]"; show logTag + " [GET IMAGE DATA]"; SesiDo.getImageInfo(args); show "[GET IMAGE DATA COMPLETED]"
+allow "../../build/index" in as SesiDo; let logTag = "[" + SesiDo.universalTime + "]"; show logTag + " [GET IMAGE DATA]"; SesiDo.getImageInfo({image_path: args[0]}); show "[GET IMAGE DATA COMPLETED]"

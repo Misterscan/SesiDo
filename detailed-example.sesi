@@ -1,0 +1,328 @@
+allow "std/draw" in as Draw
+allow "std/math" in as Math
+prompt output {($PWD || (run("cd") | split("\n"))[0])"/SesiDo/.artifacts/images/a_nearly_empty_laundromat_at_2_pm.png"}
+let width = 1200
+let height = 800
+let palette = {
+  background: "#ddd4be",
+  wall: "#dcd7c5",
+  wallLight: "#e8e1ca",
+  wallShade: "#c9c9b8",
+  trim: "#69766f",
+  trimLight: "#a8b0a0",
+  grout: "#989b8c",
+  tileA: "#bbbba5",
+  tileB: "#c5c2aa",
+  sunlight: "#f1dfab",
+  sunlightSoft: "#ddd2aa",
+  sunSeam: "#bcb595",
+  shadow: "#8b9386",
+  deepShadow: "#616c64",
+  ink: "#35463f",
+  metal: "#adb8ac",
+  metalLight: "#d7ddd0",
+  metalShade: "#7e9187",
+  white: "#ecebda",
+  glass: "#526e6a",
+  glassDark: "#294846",
+  water: "#7b9e95",
+  foam: "#c4d0be",
+  blueLaundry: "#638995",
+  street: "#939b92",
+  building: "#b7bdac",
+  buildingDark: "#899b91",
+  bus: "#dbb65b",
+  busLight: "#e9ca79",
+  busStripe: "#577e77",
+  tire: "#394b46",
+  chair: "#688d81",
+  chairLight: "#90ab96",
+  basket: "#c5b996",
+  basketLight: "#e1d1aa",
+  basketHole: "#867e65",
+  red: "#ad4436",
+  redLight: "#c66048",
+  redDark: "#79372e",
+  machine: "#52635c",
+  machineSide: "#394b46",
+  machineGlass: "#263c38",
+  label: "#b6b89e",
+  dust: "#fff0c4",
+  cord: "#48584f"
+}
+Draw.clear()
+Draw.pixel_rect(0, 0, width, height, palette.background)
+// Interpolate a point inside a quadrilateral, using normalized coordinates.
+fn surfacePoint(corners: array, u: number, v: number) -> array {
+  let topX = corners[0][0] + (corners[1][0] - corners[0][0]) * u
+  let topY = corners[0][1] + (corners[1][1] - corners[0][1]) * u
+  let bottomX = corners[3][0] + (corners[2][0] - corners[3][0]) * u
+  let bottomY = corners[3][1] + (corners[2][1] - corners[3][1]) * u
+  return [topX + (bottomX - topX) * v, topY + (bottomY - topY) * v]
+}
+// Draw the floor as a perspective grid of inset ceramic tiles.
+fn tiledFloor(corners: array, columns: number, rows: number) {
+  let cellInsetX = 0.0015
+  let cellInsetY = 0.003
+  let row = 0
+  while row < rows {
+    let column = 0
+    while column < columns {
+      let u0 = column / columns + cellInsetX
+      let u1 = (column + 1) / columns - cellInsetX
+      let v0 = row / rows + cellInsetY
+      let v1 = (row + 1) / rows - cellInsetY
+      let color = palette.tileA
+      if (column + row) % 2 == 0 { color = palette.tileB }
+      Draw.pixel_polygon([surfacePoint(corners, u0, v0), surfacePoint(corners, u1, v0), surfacePoint(corners, u1, v1), surfacePoint(corners, u0, v1)], color, true)
+      column = column + 1
+    }
+    row = row + 1
+  }
+}
+// Draw a running front-loading washer at a supplied position and scale.
+fn washer(x: number, y: number, scale: number, phase: number) {
+  Draw.pixel_rect(x + 7 * scale, y + 7 * scale, 159 * scale, 160 * scale, palette.deepShadow)
+  Draw.pixel_rect(x, y, 160 * scale, 156 * scale, palette.metalShade)
+  Draw.pixel_rect(x + 4 * scale, y + 4 * scale, 152 * scale, 143 * scale, palette.metalLight)
+  Draw.pixel_rect(x + 6 * scale, y + 5 * scale, 148 * scale, 29 * scale, palette.metal)
+  Draw.pixel_rect(x + 14 * scale, y + 13 * scale, 40 * scale, 10 * scale, palette.white)
+  Draw.pixel_line(x + 15 * scale, y + 25 * scale, x + 55 * scale, y + 25 * scale, palette.metalShade)
+  Draw.pixel_circle(x + 116 * scale, y + 18 * scale, 8 * scale, palette.metalShade)
+  Draw.pixel_circle(x + 116 * scale, y + 18 * scale, 5 * scale, palette.white)
+  Draw.pixel_rect(x + 69 * scale, y + 12 * scale, 27 * scale, 13 * scale, palette.glassDark)
+  Draw.pixel_rect(x + 74 * scale, y + 16 * scale, 13 * scale, 3 * scale, palette.water)
+  Draw.pixel_circle(x + 80 * scale, y + 90 * scale, 52 * scale, palette.metalShade)
+  Draw.pixel_circle(x + 80 * scale, y + 89 * scale, 47 * scale, palette.white)
+  Draw.pixel_circle(x + 80 * scale, y + 90 * scale, 40 * scale, palette.glassDark)
+  Draw.pixel_circle(x + 79 * scale, y + 89 * scale, 34 * scale, palette.glass)
+  Draw.pixel_ellipse(x + 80 * scale, y + 108 * scale, 29 * scale, 13 * scale, palette.water)
+  let angle = phase
+  let i = 0
+  while i < 4 {
+    let px = x + (80 + Math.cos(angle) * 19) * scale
+    let py = y + (90 + Math.sin(angle) * 19) * scale
+    let laundryColor = palette.foam
+    if i % 2 == 0 { laundryColor = palette.blueLaundry }
+    Draw.pixel_ellipse(px, py, 15 * scale, 9 * scale, laundryColor)
+    angle = angle + Math.PI / 2
+    i = i + 1
+  }
+  Draw.pixel_arc(x + 80 * scale, y + 90 * scale, 31 * scale, 195, 278, palette.metalLight)
+  Draw.pixel_arc(x + 80 * scale, y + 90 * scale, 27 * scale, 20, 100, palette.water)
+  Draw.pixel_ellipse(x + 64 * scale, y + 70 * scale, 5 * scale, 12 * scale, palette.foam)
+  Draw.pixel_rect(x + 122 * scale, y + 82 * scale, 8 * scale, 19 * scale, palette.metalShade)
+  Draw.pixel_rect(x + 15 * scale, y + 149 * scale, 130 * scale, 7 * scale, palette.metalShade)
+}
+// Draw a molded plastic chair in sideways profile, facing left.
+fn sidewaysChair(x: number, y: number, scale: number) {
+  Draw.pixel_polygon([[x - 52 * scale, y + 84 * scale],[x + 22 * scale, y + 71 * scale],[x + 69 * scale, y + 85 * scale],[x - 13 * scale, y + 109 * scale]], palette.shadow)
+  Draw.pixel_polygon([[x - 34 * scale, y - 8 * scale],[x - 24 * scale, y - 8 * scale],[x - 42 * scale, y + 86 * scale],[x - 49 * scale, y + 87 * scale]], palette.chair)
+  Draw.pixel_polygon([[x + 22 * scale, y - 10 * scale],[x + 31 * scale, y - 10 * scale],[x + 50 * scale, y + 77 * scale],[x + 43 * scale, y + 79 * scale]], palette.chair)
+  Draw.pixel_polygon([[x - 54 * scale, y - 22 * scale],[x + 22 * scale, y - 32 * scale],[x + 42 * scale, y - 10 * scale],[x - 40 * scale, y + 1 * scale]], palette.chairLight)
+  Draw.pixel_polygon([[x - 40 * scale, y + 1 * scale],[x + 42 * scale, y - 10 * scale],[x + 40 * scale, y + 1 * scale],[x - 38 * scale, y + 10 * scale]], palette.chair)
+  Draw.pixel_polygon([[x + 20 * scale, y - 31 * scale],[x + 9 * scale, y - 113 * scale],[x + 18 * scale, y - 124 * scale],[x + 42 * scale, y - 116 * scale],[x + 51 * scale, y - 37 * scale],[x + 42 * scale, y - 10 * scale]], palette.chair)
+  Draw.pixel_line(x + 18 * scale, y - 113 * scale, x + 31 * scale, y - 38 * scale, palette.chairLight)
+  Draw.pixel_line(x + 25 * scale, y - 111 * scale, x + 38 * scale, y - 39 * scale, palette.chairLight)
+}
+// Interior shell.
+Draw.pixel_rect(0, 0, width, 443, palette.wall)
+Draw.pixel_polygon([[0,0],[1200,0],[1200,43],[0,69]], palette.wallShade)
+Draw.pixel_rect(0, 72, 1200, 5, palette.wallLight)
+Draw.pixel_polygon([[0,86],[562,86],[562,436],[0,436]], palette.wallLight)
+Draw.pixel_rect(0, 425, width, 18, palette.trim)
+Draw.pixel_rect(0, 424, width, 3, palette.trimLight)
+// Street view, behind the front window glass.
+Draw.pixel_rect(48, 103, 504, 316, palette.trim)
+Draw.pixel_rect(59, 114, 481, 291, palette.building)
+Draw.pixel_rect(59, 273, 481, 132, palette.street)
+Draw.pixel_rect(59, 253, 481, 19, palette.white)
+let facadeColumn = 0
+while facadeColumn < 7 {
+  Draw.pixel_rect(69 + facadeColumn * 72, 127, 38, 76, palette.buildingDark)
+  Draw.pixel_rect(75 + facadeColumn * 72, 131, 4, 68, palette.metal)
+  facadeColumn = facadeColumn + 1
+}
+Draw.pixel_rect(59, 240, 481, 8, palette.buildingDark)
+Draw.pixel_polygon([[59,371],[540,359],[540,386],[59,402]], palette.metalLight)
+Draw.pixel_line(59, 387, 540, 375, palette.trimLight)
+// A stopped city bus, cropped naturally by the window opening.
+Draw.pixel_rect(65, 217, 472, 127, palette.bus)
+Draw.pixel_rect(74, 207, 459, 21, palette.busLight)
+Draw.pixel_rect(65, 310, 472, 21, palette.busStripe)
+let busWindow = 0
+while busWindow < 6 {
+  Draw.pixel_rect(78 + busWindow * 61, 232, 53, 57, palette.glassDark)
+  Draw.pixel_rect(81 + busWindow * 61, 235, 47, 18, palette.glass)
+  Draw.pixel_line(85 + busWindow * 61, 236, 119 + busWindow * 61, 257, palette.metalShade)
+  busWindow = busWindow + 1
+}
+Draw.pixel_rect(451, 228, 68, 101, palette.busStripe)
+Draw.pixel_rect(458, 233, 23, 87, palette.glassDark)
+Draw.pixel_rect(486, 233, 24, 87, palette.glassDark)
+Draw.pixel_line(482, 231, 482, 327, palette.busLight)
+Draw.pixel_circle(158, 341, 27, palette.tire)
+Draw.pixel_circle(158, 341, 12, palette.metalShade)
+Draw.pixel_circle(410, 341, 27, palette.tire)
+Draw.pixel_circle(410, 341, 12, palette.metalShade)
+Draw.pixel_rect(67, 332, 471, 7, palette.machineSide)
+Draw.pixel_rect(78, 215, 130, 12, palette.machineSide)
+Draw.pixel_text(84, 218, "24  DOWNTOWN", palette.busLight, 1)
+Draw.pixel_rect(521, 295, 10, 8, palette.white)
+// Reflected daylight and heavy window mullions.
+Draw.pixel_polygon([[61,115],[86,115],[276,404],[246,404]], palette.sunlightSoft)
+Draw.pixel_polygon([[466,115],[479,115],[538,224],[538,250]], palette.sunlightSoft)
+Draw.pixel_rect(211, 109, 10, 301, palette.trim)
+Draw.pixel_rect(376, 109, 10, 301, palette.trim)
+Draw.pixel_rect(54, 294, 490, 8, palette.trim)
+Draw.pixel_rect(48, 405, 507, 15, palette.trimLight)
+Draw.pixel_rect(42, 420, 521, 9, palette.metalShade)
+Draw.pixel_rect(56, 111, 4, 291, palette.metalLight)
+// Quiet wall details: a two-o'clock clock and old instructions.
+Draw.pixel_circle(879, 144, 33, palette.trim)
+Draw.pixel_circle(879, 144, 29, palette.white)
+let tick = 0
+while tick < 12 {
+  let angle = tick * Math.PI / 6
+  Draw.pixel_line(879 + Math.sin(angle) * 24, 144 - Math.cos(angle) * 24, 879 + Math.sin(angle) * 27, 144 - Math.cos(angle) * 27, palette.trim)
+  tick = tick + 1
+}
+Draw.pixel_line(879, 144, 879, 120, palette.ink)
+Draw.pixel_line(879, 144, 895, 135, palette.ink)
+Draw.pixel_circle(879, 144, 3, palette.ink)
+Draw.pixel_rect(1020, 126, 112, 78, palette.metalShade)
+Draw.pixel_rect(1023, 129, 106, 72, palette.white)
+Draw.pixel_text(1031, 140, "PLEASE", palette.trim, 1)
+Draw.pixel_text(1031, 154, "REMOVE", palette.trim, 1)
+Draw.pixel_text(1031, 168, "LAUNDRY", palette.trim, 1)
+Draw.pixel_text(1031, 182, "PROMPTLY", palette.trim, 1)
+// Floor, with widening perspective tiles.
+Draw.pixel_rect(0, 443, width, 357, palette.grout)
+let floorCorners = [[145,443],[1055,443],[1370,800],[-215,800]]
+tiledFloor(floorCorners, 13, 8)
+// Two afternoon sunbeams spread from the front glazing.
+Draw.pixel_polygon([[67,443],[199,443],[690,800],[417,800]], palette.sunlight)
+Draw.pixel_polygon([[221,443],[367,443],[1058,800],[757,800]], palette.sunlight)
+Draw.pixel_polygon([[391,443],[505,443],[1200,730],[1200,800],[1111,800]], palette.sunlightSoft)
+// Restore the tile joints across the sunlit floor.
+let joint = 0
+while joint <= 13 {
+  let a = surfacePoint(floorCorners, joint / 13, 0)
+  let b = surfacePoint(floorCorners, joint / 13, 1)
+  Draw.pixel_line(a[0], a[1], b[0], b[1], palette.sunSeam)
+  joint = joint + 1
+}
+joint = 0
+while joint <= 8 {
+  let a = surfacePoint(floorCorners, 0, joint / 8)
+  let b = surfacePoint(floorCorners, 1, joint / 8)
+  Draw.pixel_line(a[0], a[1], b[0], b[1], palette.sunSeam)
+  joint = joint + 1
+}
+// The unplugged vending machine: dark display, no illuminated controls.
+Draw.pixel_polygon([[578,447],[710,447],[783,493],[627,495]], palette.shadow)
+Draw.pixel_rect(579, 171, 122, 272, palette.machine)
+Draw.pixel_polygon([[701,171],[718,181],[718,443],[701,443]], palette.machineSide)
+Draw.pixel_rect(588, 184, 103, 29, palette.machineSide)
+Draw.pixel_text(602, 193, "SNACKS", palette.label, 2)
+Draw.pixel_rect(590, 222, 77, 159, palette.machineGlass)
+let shelf = 0
+while shelf < 4 {
+  let snack = 0
+  while snack < 3 {
+    let packetColor = palette.label
+    if (shelf + snack) % 3 == 0 { packetColor = palette.redDark }
+    Draw.pixel_rect(598 + snack * 21, 234 + shelf * 34, 13, 21, packetColor)
+    Draw.pixel_rect(600 + snack * 21, 242 + shelf * 34, 9, 5, palette.machine)
+    snack = snack + 1
+  }
+  Draw.pixel_line(592, 259 + shelf * 34, 665, 259 + shelf * 34, palette.metalShade)
+  shelf = shelf + 1
+}
+Draw.pixel_rect(674, 230, 11, 25, palette.machineSide)
+Draw.pixel_rect(675, 268, 9, 39, palette.metalShade)
+Draw.pixel_rect(600, 398, 68, 21, palette.machineSide)
+Draw.pixel_line(605, 402, 663, 402, palette.metalShade)
+// Loose cord ends below an unused wall socket.
+Draw.pixel_rect(724, 359, 20, 29, palette.white)
+Draw.pixel_rect(730, 366, 2, 6, palette.trim)
+Draw.pixel_rect(736, 366, 2, 6, palette.trim)
+Draw.pixel_bezier(714, 413, 738, 454, 752, 439, palette.cord)
+Draw.pixel_bezier(752, 439, 765, 423, 758, 413, palette.cord)
+Draw.pixel_rect(753, 402, 10, 14, palette.cord)
+Draw.pixel_line(755, 397, 755, 403, palette.metalLight)
+Draw.pixel_line(761, 397, 761, 403, palette.metalLight)
+// Three running washers on the far wall.
+Draw.pixel_polygon([[732,446],[1199,446],[1200,480],[781,472]], palette.shadow)
+let washerIndex = 0
+while washerIndex < 3 {
+  washer(730 + washerIndex * 157, 293, 0.94, washerIndex * 1.1 + 0.4)
+  washerIndex = washerIndex + 1
+}
+Draw.pixel_rect(726, 286, 474, 7, palette.white)
+Draw.pixel_rect(726, 279, 474, 7, palette.metalShade)
+// Empty folding table, with a pale laminate top and thin steel legs.
+Draw.pixel_polygon([[897,599],[1167,586],[1200,666],[991,713],[869,659]], palette.shadow)
+Draw.pixel_polygon([[921,568],[931,568],[908,674],[899,674]], palette.metalShade)
+Draw.pixel_polygon([[1148,560],[1158,560],[1192,655],[1182,657]], palette.metalShade)
+Draw.pixel_polygon([[1034,533],[1042,533],[1060,620],[1052,621]], palette.metalShade)
+Draw.pixel_line(917, 650, 1176, 635, palette.metalShade)
+Draw.pixel_polygon([[881,547],[1092,515],[1192,553],[959,597]], palette.white)
+Draw.pixel_polygon([[881,547],[959,597],[959,609],[881,559]], palette.metal)
+Draw.pixel_polygon([[959,597],[1192,553],[1192,565],[959,609]], palette.metalShade)
+Draw.pixel_line(890, 548, 1089, 520, palette.metalLight)
+// A single chair, turned sideways beside the folding table.
+sidewaysChair(828, 627, 0.94)
+// Basket shadow and the red hoodie spilling over its rim.
+Draw.pixel_ellipse(507, 722, 106, 23, palette.shadow)
+Draw.pixel_polygon([[410,654],[554,641],[584,666],[563,726],[438,737]], palette.basket)
+Draw.pixel_polygon([[414,658],[551,649],[575,667],[437,681]], palette.basketHole)
+// Hoodie body, hood opening, and folded sleeve.
+Draw.pixel_polygon([[435,655],[443,620],[464,598],[500,595],[526,610],[549,647],[544,681],[515,701],[470,689]], palette.red)
+Draw.pixel_ellipse(478, 610, 26, 21, palette.redLight)
+Draw.pixel_ellipse(478, 610, 16, 13, palette.redDark)
+Draw.pixel_polygon([[466,617],[488,618],[508,645],[496,678],[455,671]], palette.red)
+Draw.pixel_polygon([[515,623],[539,632],[562,671],[550,699],[533,690],[536,669],[513,650]], palette.redLight)
+Draw.pixel_polygon([[456,637],[439,647],[434,674],[446,687],[472,682],[470,669],[449,668]], palette.redDark)
+Draw.pixel_bezier(496, 625, 508, 647, 504, 674, palette.redDark)
+Draw.pixel_line(476, 626, 471, 652, palette.basketLight)
+Draw.pixel_line(483, 627, 488, 651, palette.basketLight)
+Draw.pixel_polygon([[503,663],[524,664],[522,678],[500,679]], palette.redDark)
+// Basket front occludes the lower folds of the hoodie.
+Draw.pixel_polygon([[424,675],[579,662],[563,726],[438,737]], palette.basketLight)
+Draw.pixel_polygon([[555,676],[579,662],[563,726],[548,728]], palette.basket)
+let basketRow = 0
+while basketRow < 3 {
+  let basketColumn = 0
+  while basketColumn < 8 {
+    let bx = 438 + basketColumn * 15 + basketRow * 2
+    let by = 687 + basketRow * 14 - basketColumn * 1.05
+    Draw.pixel_polygon([[bx,by],[bx+9,by-1],[bx+8,by+7],[bx+1,by+8]], palette.basketHole)
+    basketColumn = basketColumn + 1
+  }
+  basketRow = basketRow + 1
+}
+Draw.pixel_line(426, 675, 576, 663, palette.basket)
+Draw.pixel_line(429, 678, 574, 666, palette.white)
+Draw.pixel_ellipse(568, 685, 4, 9, palette.basketHole)
+Draw.pixel_polygon([[532,661],[550,656],[557,688],[550,704],[538,699]], palette.red)
+Draw.pixel_line(539, 669, 547, 692, palette.redLight)
+// Deliberately placed dust motes, visible only in the window light.
+let dustPoints = [
+  [120,333,1],[151,355,2],[181,316,1],[218,371,1],
+  [246,344,2],[280,396,1],[306,364,1],[340,405,2],
+  [359,378,1],[383,426,1],[409,398,2],[435,441,1],
+  [465,424,1],[496,468,2],[516,445,1],[545,480,1],
+  [269,301,1],[323,331,1],[371,352,2],[424,370,1],
+  [192,409,1],[302,451,1],[359,478,2],[403,498,1]
+]
+let dustIndex = 0
+while dustIndex < len(dustPoints) {
+  let mote = dustPoints[dustIndex]
+  Draw.pixel_circle(mote[0], mote[1], mote[2], palette.dust)
+  dustIndex = dustIndex + 1
+}
+try {
+  Draw.save_png(output, width, height, palette.background)
+  show "Drawing of a laundromat at" width "x" height "saved to" output
+} catch (e) { show e }

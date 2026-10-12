@@ -126,7 +126,6 @@ export fn extension(path: str) -> str? {
   return result
 }
 
-
 export fn tempFile(filename: string, content: string, ext: string) {
   return writeFile(filename + "_temp." + ext, content)
 }
@@ -140,14 +139,14 @@ let currentOS = trim(js("console.log(require('os').platform())"))
 let pwd = ""
 
 if currentOS == "linux" || currentOS == "darwin" {
-  try {pwd = env("PWD")} catch (e) {}
+  try {pwd = $PWD} catch (e) {}
   if contains(pwd, "/") {
     pwd = trim(pwd) + "/" // Normalize the working directory for Linux and macOS
   }
 }
 
 if currentOS == "win32" {
-  try {pwd = exec("cd")} catch (e) {}
+  try {pwd = run("cd")} catch (e) {}
   if includes(pwd, "\\") {
     let parts = split(pwd, "\n")
     let finalPath = parts[0]

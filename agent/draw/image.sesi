@@ -1,1 +1,1 @@
-allow "../../build/index" in as SesiDo; set_alias("SesiDo-GPT-Lite", "gpt-5.6-terra"); set_alias("SesiDo", "gemini-3.7-flash"); set_alias("SesiDo-Lite-Power", "gemini-3.5-flash-lite"); let logTag = "[" + SesiDo.universalTime + "]"; show logTag + " [DRAW IMAGE]"; SesiDo.drawImage(args); show "[DRAW IMAGE FINISHED]"
+allow "../../build/index" in as SesiDo; let logTag = "[" + SesiDo.universalTime + "]"; show logTag + " [DRAW IMAGE]"; SesiDo.drawImage({query: args[0]}); show "[DRAW IMAGE FINISHED]"
