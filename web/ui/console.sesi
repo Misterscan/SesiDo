@@ -1,0 +1,90 @@
+allow "std/web" in as UI
+allow "client" in as C
+
+fn Console(props, ui) {
+  let config = ui.state("config", null)
+  let sessions = ui.state("sessions", [])
+  let messages = ui.state("messages", [])
+  let session = ui.state("session", C.selectedSession())
+  let newName = ui.state("newName", "")
+  let message = ui.state("message", "")
+  let modelAlias = ui.state("modelAlias", "SesiDo-GPT-Pro")
+  let budget = ui.state("budget", "20")
+  let error = ui.state("error", "")
+  let run = ui.state("run", null)
+  let autostart = ui.state("autostart", false)
+  let busy = ui.state("busy", false)
+  fn loadMessages(id) { messages.set(C.get("/api/sessions/" + url_encode(id) + "/messages").messages) }
+  fn load() {
+    try {
+      config.set(C.get("/api/config"))
+      sessions.set(C.get("/api/sessions").sessions)
+      loadMessages(session.value)
+      run.set(C.recover())
+    } catch (reason) { error.set(str(reason)) }
+  }
+  ui.effect("load", [], load)
+  fn updateRun(next) {
+    run.set(next)
+    if C.ended(next) { loadMessages(session.value) }
+  }
+  fn selectSession(event) {
+    session.set(event.target.value)
+    localStorage.setItem("sesido.session", event.target.value)
+    try { loadMessages(event.target.value) } catch (reason) { error.set(str(reason)) }
+  }
+  fn typeName(event) { newName.set(event.target.value) }
+  fn createSession(event) {
+    event.preventDefault()
+    try {
+      C.post("/api/sessions", {id: trim(newName.value)})
+      session.set(trim(newName.value))
+      localStorage.setItem("sesido.session", trim(newName.value))
+      sessions.set(C.get("/api/sessions").sessions)
+      messages.set([])
+      newName.set("")
+      error.set("")
+    } catch (reason) { error.set(str(reason)) }
+  }
+  fn reset() {
+    if !window.confirm("Clear the conversation history for " + session.value + "?") { return null }
+    try { C.post("/api/sessions/" + url_encode(session.value) + "/reset", {confirm: true}); messages.set([]); error.set("") }
+    catch (reason) { error.set(str(reason)) }
+  }
+  fn typeMessage(event) { message.set(event.target.value) }
+  fn selectModel(event) { modelAlias.set(event.target.value) }
+  fn changeBudget(event) { budget.set(event.target.value) }
+  fn submit(event) {
+    event.preventDefault()
+    busy.set(true)
+    try {
+      let next = C.post("/api/runs", {kind: "agent", sessionId: session.value, "model": modelAlias.value, maxSteps: num(budget.value), message: message.value})
+      C.remember(next)
+      run.set(next)
+      autostart.set(true)
+      message.set("")
+      error.set("")
+    } catch (reason) { error.set(str(reason)) }
+    busy.set(false)
+  }
+  let locked = busy.value || (run.value != null && !C.ended(run.value))
+  let sessionOptions = [C.e("option", {value: "default"}, ["default"])]
+  for record in sessions.value {
+    if record.id != "default" { push(sessionOptions, C.e("option", {value: record.id}, [record.id])) }
+  }
+  let modelOptions = []
+  if config.value != null {
+    for alias in config.value.aliases { push(modelOptions, C.e("option", {value: alias.alias}, [alias.alias])) }
+  }
+  let conversation = []
+  for entry in messages.value {
+    push(conversation, C.e("article", {class: "message " + to_lower(entry.role)}, [C.e("div", {class: "message-role"}, [entry.role]), C.e("pre", {}, [entry.content])]))
+  }
+  if len(conversation) == 0 {
+    conversation = [C.e("div", {class: "conversation-empty"}, [C.e("div", {class: "empty-symbol", "aria-hidden": "true"}, ["✳"]), C.e("h2", {}, ["Where do we begin?"]), C.e("p", {}, ["Give SesiDo an objective. Follow the work, review its actions, and keep control of your workspace."]), C.e("div", {class: "suggestions"}, [C.badge("RESEARCH"), C.badge("BUILD"), C.badge("CREATE")])])]
+  }
+  let activity = C.e("section", {class: "panel idle-panel"}, [C.e("div", {class: "panel-top"}, [C.e("h2", {}, ["Run activity"]), C.badge("STANDBY")]), C.e("div", {class: "radar", "aria-hidden": "true"}, [C.e("span", {}, ["+"])]), C.e("h3", {}, ["Ready for your signal."]), C.e("p", {class: "muted"}, ["Steps, tool results, and approval requests appear here during a run."]), C.link("/workflows", "Explore focused workflows ↗")])
+  if run.value != null { activity = UI.child(C.RunPanel, {run: run.value, autostart: autostart.value, update: updateRun}, run.value.id) }
+  return C.e("div", {}, [C.heading("OPERATIONS / 01", "Console.", "Set the objective. Direct the intelligence."), C.notice(error.value), C.e("div", {class: "console-grid"}, [C.e("div", {class: "console-main"}, [C.e("section", {class: "panel session-bar"}, [C.field("Active session", "session", C.e("select", {id: "session", value: session.value, on_change: selectSession, disabled: locked}, sessionOptions)), C.e("form", {on_submit: createSession, class: "session-create"}, [C.field("New session", "new-session", C.e("input", {id: "new-session", placeholder: "project-name", value: newName.value, on_input: typeName, pattern: "[A-Za-z0-9_-]{1,80}", required: true, disabled: locked})), C.e("button", {type: "submit", class: "button compact", disabled: locked}, ["Create +"])]), C.button("Reset", reset, "button ghost compact", locked)]), C.e("section", {class: "panel conversation", "aria-label": "Conversation"}, conversation), C.e("form", {class: "panel composer", on_submit: submit}, [C.field("Your objective", "message", C.e("textarea", {id: "message", rows: 4, placeholder: "What would you like to work on?", value: message.value, on_input: typeMessage, required: true, maxlength: 100000, disabled: locked})), C.e("div", {class: "composer-controls"}, [C.field("Model", "model-alias", C.e("select", {id: "model-alias", value: modelAlias.value, on_change: selectModel, disabled: locked}, modelOptions)), C.field("Step budget", "step-budget", C.e("input", {id: "step-budget", type: "number", min: 1, max: 100, value: budget.value, on_input: changeBudget, disabled: locked})), C.e("button", {type: "submit", class: "button primary send-button", disabled: locked || config.value == null}, ["Launch run ↗"])])])]), activity])])
+}
+C.mount(Console)

@@ -13,6 +13,11 @@ SesiDo/database/.agent/*-memory-block.md
 helpers/version-bump.sesi
 database/.agent/*-memory-block.md
 .env.keys
+web/ui/*.js
+SesiDo/database/web/
 sesi.json
 sesi_modules
 node_modules
+benchmark
+*memory-details.json
+drawings/

@@ -1,0 +1,43 @@
+allow "std/web" in as UI
+allow "client" in as C
+
+fn ModelRow(props, ui) {
+  let name = ui.state("name", props.item.providerModel)
+  let status = ui.state("status", "")
+  let busy = ui.state("busy", false)
+  fn typeName(event) { name.set(event.target.value) }
+  fn save(event) {
+    event.preventDefault()
+    busy.set(true)
+    try { C.post("/api/config", {alias: props.item.alias, providerModel: name.value}); status.set("Saved") }
+    catch (reason) { status.set(str(reason)) }
+    busy.set(false)
+  }
+  return C.e("form", {class: "model-row", on_submit: save}, [C.e("div", {class: "model-alias"}, [C.e("h3", {}, [props.item.alias]), C.e("span", {class: "fine-print", role: "status"}, [status.value])]), C.field("Provider model", "alias-" + props.item.alias, C.e("input", {id: "alias-" + props.item.alias, value: name.value, on_input: typeName, required: true, maxlength: 200, disabled: props.locked || busy.value})), C.e("button", {type: "submit", class: "button compact", disabled: props.locked || busy.value}, ["Save ↗"])])
+}
+
+fn provider(name, configured) {
+  let state = "NOT CONFIGURED"
+  if configured { state = "CONFIGURED" }
+  return C.e("section", {class: "panel provider-card"}, [C.e("div", {class: "panel-top"}, [C.e("h2", {}, [name]), C.badge(state)]), C.e("p", {class: "muted"}, ["Credentials are read from the server environment. Secret values never reach this browser."])])
+}
+
+fn Settings(props, ui) {
+  let config = ui.state("config", null)
+  let locked = ui.state("locked", false)
+  let error = ui.state("error", "")
+  fn load() {
+    try { config.set(C.get("/api/config")); locked.set(C.get("/api/runs/active").run != null); error.set("") } catch (reason) { error.set(str(reason)) }
+  }
+  ui.effect("settings", [], load)
+  let content = C.e("p", {class: "muted"}, ["Reading server configuration…"])
+  if config.value != null {
+    let rows = []
+    for item in config.value.aliases { push(rows, UI.child(ModelRow, {item: item, locked: locked.value}, item.alias)) }
+    let warning = null
+    if locked.value { warning = C.notice("A run is active. Complete or stop it before editing model mappings, then refresh this page.") }
+    content = C.e("div", {}, [C.e("div", {class: "provider-grid"}, [provider("OpenAI", config.value.openaiConfigured), provider("Google Gemini", config.value.geminiConfigured)]), warning, C.e("section", {class: "panel model-settings"}, [C.e("div", {class: "panel-top"}, [C.e("h2", {}, ["Model routing"]), C.button("Refresh ↻", load, "button compact")]), C.e("p", {class: "muted"}, ["Map SesiDo aliases to provider model identifiers. Changes are saved locally and restored when the server restarts."]), C.e("div", {class: "model-rows"}, rows)]), C.e("section", {class: "panel system-note"}, [C.e("h2", {}, ["Local by design."]), C.e("p", {}, ["One active run at a time. Navigating away pauses future phases; calls already executing may finish. The access token changes on each server launch."]), C.e("p", {class: "file-path"}, ["Artifact root: " + config.value.artifactRoot]), C.link("/docs", "Open API reference ↗")])])
+  }
+  return C.e("div", {}, [C.heading("SYSTEM / 04", "Settings.", "Route your models. Keep your keys on your machine."), C.notice(error.value), content])
+}
+C.mount(Settings)

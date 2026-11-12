@@ -392,7 +392,7 @@ Objects are useful for configuration and structured records.
 ```sesi
 let app = {
   "name": "Sesi",
-  "version": "1.9.1"
+  "version": "1.9.2"
 }
 
 for key in keys(app) {
@@ -425,12 +425,12 @@ Sesi provides native string utilities to format, transform, and slice text:
 - **`locate(string, sub)`**: Returns the zero-based index of the first occurrence of a substring, or `-1` if not found.
 
 ```sesi
-let original = "  Hello, Sesi V1.9.1!  "
+let original = "  Hello, Sesi V1.9.2!  "
 
-let cleaned = trim(original)                   // "Hello, Sesi V1.9.1!"
-let shouted = to_upper(cleaned)                // "HELLO, SESI V1.9.1!"
+let cleaned = trim(original)                   // "Hello, Sesi V1.9.2!"
+let shouted = to_upper(cleaned)                // "HELLO, SESI V1.9.2!"
 let part = slice(cleaned, 7, 11)               // "Sesi"
-let replaced = swap(cleaned, " ", "_")         // "Hello,_Sesi_V1.9.1!"
+let replaced = swap(cleaned, " ", "_")         // "Hello,_Sesi_V1.9.2!"
 let found = contains(cleaned, "Sesi")          // true
 let idx = locate(cleaned, "Sesi")             // 7
 ```
@@ -820,7 +820,7 @@ show floor(3.9)
 // JSON conversion is built in; no module import is needed
 let original = {
   "project": "Sesi",
-  "version": "1.9.1"
+  "version": "1.9.2"
 }
 show to_json(original)
 ```
@@ -970,25 +970,7 @@ try {
 
 ---
 
-## 23. 3D desktop game scripts
-
-Use `std/game` for imperative Babylon-powered desktop games. Scenes are left-handed with Y up, `+X` right, and `+Z` forward. Relative asset paths use the current working directory, matching `write_file`, `Draw.save_png`, and `Audio.save`. Install `@misterscan/sesi-game`, run scripts with `sesi -l`, keep per-frame callbacks synchronous, put deterministic motion in `on_fixed_update`, register assets explicitly, and declare only the packaged capabilities the game needs.
-
-```sesi
-allow "std/game" in as Game
-let game = Game.create({title: "Writing Guide Game"})
-let scene = game.create_scene("main")
-let camera = scene.orbit_camera("camera", {radius: 12})
-let light = scene.hemispheric_light("light")
-let player = scene.box("player")
-fn fixed(dt) { player.position.x = player.position.x + dt }
-game.on_fixed_update(fixed)
-game.run()
-```
-
-See [GAME.md](../getting-started/GAME.md) for the complete API and packaging/security model.
-
-## 24. Practical Checklist
+## 23. Practical Checklist
 
 When writing a Sesi script, check these points before you call it done:
 
@@ -1004,7 +986,4 @@ When writing a Sesi script, check these points before you call it done:
 
 ## Next Steps
 
-- Explore the [Built-in Functions Reference](BUILTINS.md) for every runtime function.
-- Read the [CLI Reference](CLI.md) for execution, sandbox, REPL, encryption, and debugging flags.
 - Use the [Language Specification](SPECIFICATION.md) when you need exact syntax rules.
-- Study the scripts in the [examples](../examples) directory.

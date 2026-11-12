@@ -1,0 +1,26 @@
+/** Durable JSON snapshots using Sesi file primitives and bounded retries. */
+export fn save(path, value) {
+  let attempts = 0
+  while attempts < 3 {
+    try {
+      write_file(path + ".pending", to_json(value))
+      rename(path + ".pending", path)
+      return true
+    } catch (error) {
+      attempts = attempts + 1
+      if attempts == 3 { raise_error("PersistenceError", "Could not save run state: " + str(error)) }
+    }
+  }
+  return false
+}
+
+export fn read(path) {
+  let attempts = 0
+  while attempts < 3 {
+    try { return from_json(read_file(path)) } catch (error) {
+      attempts = attempts + 1
+      if attempts == 3 { raise_error("PersistenceError", "Could not read run state: " + str(error)) }
+    }
+  }
+  return null
+}

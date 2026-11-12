@@ -1,0 +1,172 @@
+/** Shared browser transport and components. All UI trees are authored in std/web. */
+allow "std/web" in as UI
+
+let fragment = slice(location.hash, 1)
+if slice(fragment, 0, 6) == "token=" {
+  sessionStorage.setItem("sesido.token", slice(fragment, 6))
+  history.replaceState(null, "", location.pathname + location.search)
+}
+
+export fn get(path) {
+  let text = web_get(path, {Authorization: "Bearer " + sessionStorage.getItem("sesido.token")})
+  let data = from_json(text)
+  if data.error != null { raise_error("RequestError", data.error) }
+  if data.detail != null { raise_error("RequestError", to_json(data.detail)) }
+  return data
+}
+
+export fn post(path, body) {
+  let text = web_send(path, body, {Authorization: "Bearer " + sessionStorage.getItem("sesido.token")})
+  let data = from_json(text)
+  if data.error != null { raise_error("RequestError", data.error) }
+  if data.detail != null { raise_error("RequestError", to_json(data.detail)) }
+  return data
+}
+
+export fn item() { return document.body.getAttribute("data-item") }
+export fn selectedSession() {
+  let id = localStorage.getItem("sesido.session")
+  if id == null || id == "" { return "default" }
+  return id
+}
+export fn remember(run) { sessionStorage.setItem("sesido.run", run.id) }
+export fn recover() {
+  let current = get("/api/runs/active").run
+  if current != null { return current }
+  let id = sessionStorage.getItem("sesido.run")
+  if id != null {
+    try { return get("/api/runs/" + id) } catch (error) { return null }
+  }
+  return null
+}
+
+export fn e(tag, props, children = []) { return UI.element(tag, props, children) }
+export fn link(path, label, className = "text-link") { return e("a", {href: path, class: className}, [label]) }
+export fn button(label, action, className = "button", disabled = false) { return e("button", {type: "button", class: className, on_click: action, disabled: disabled}, [label]) }
+export fn notice(message) {
+  if message == "" || message == null { return null }
+  return e("div", {class: "notice", role: "alert"}, [message])
+}
+export fn field(label, id, control) { return e("div", {class: "field"}, [e("label", {"for": id}, [label]), control]) }
+export fn heading(kicker, title, description) {
+  return e("section", {class: "page-heading"}, [e("div", {class: "eyebrow"}, [kicker]), e("h1", {"data-echo": title}, [title]), e("p", {}, [description])])
+}
+export fn badge(text) { return e("span", {class: "badge"}, [text]) }
+export fn ended(run) { return run != null && (run.state == "completed" || run.state == "failed" || run.state == "stopped" || run.state == "interrupted") }
+
+/** Gate each page on a server-verified token; the shell contains no workspace data. */
+export fn Frame(props, ui) {
+  let ready = ui.state("ready", false)
+  let checking = ui.state("checking", true)
+  let error = ui.state("error", "")
+  let access = ui.state("access", "")
+  fn check() {
+    try { get("/api/health"); ready.set(true) } catch (reason) { error.set(str(reason)) }
+    checking.set(false)
+  }
+  ui.effect("connect", [], check)
+  fn typeAccess(event) { access.set(event.target.value) }
+  fn connect(event) {
+    event.preventDefault()
+    sessionStorage.setItem("sesido.token", trim(access.value))
+    location.reload()
+  }
+  if ready.value { return UI.child(props.component, {}, "page") }
+  if checking.value { return e("p", {class: "boot", role: "status"}, ["ESTABLISHING LOCAL CONNECTION…"]) }
+  return e("div", {class: "connect-screen"}, [heading("SECURE LOCAL LINK / 00", "Connect.", "Your workstation is ready. Use the private launch link printed in your terminal, or paste its access token below."), notice(error.value), e("form", {class: "panel connect-panel", on_submit: connect}, [field("Server access token", "access-token", e("input", {id: "access-token", type: "password", value: access.value, on_input: typeAccess, required: true, autocomplete: "off"})), e("button", {type: "submit", class: "button primary"}, ["Connect workstation ↗"])]), e("p", {class: "muted"}, ["Run npm run web:start from the SesiDo repository. API keys stay on the server."])])
+}
+
+/** Shared live run controls. Each automatic advance executes only one server phase. */
+export fn RunPanel(props, ui) {
+  let current = ui.state("current", props.run)
+  let automatic = ui.state("automatic", props.autostart == true)
+  let error = ui.state("error", "")
+  let working = ui.state("working", false)
+  let run = current.value
+
+  fn update(next) {
+    current.set(next)
+    props.update(next)
+    remember(next)
+    if ended(next) { automatic.set(false) }
+  }
+  fn refresh() {
+    try { update(get("/api/runs/" + run.id)); error.set("") } catch (reason) { error.set(str(reason)); automatic.set(false) }
+  }
+  fn advance() {
+    working.set(true)
+    try { update(post("/api/runs/" + run.id + "/advance", {version: run.version})); error.set("") }
+    catch (reason) { error.set(str(reason)); automatic.set(false); refresh() }
+    working.set(false)
+  }
+  fn resume() { automatic.set(true); error.set("") }
+  fn pause() { automatic.set(false) }
+  fn stop() {
+    automatic.set(false)
+    try { update(post("/api/runs/" + run.id + "/stop", {})) } catch (reason) { error.set(str(reason)) }
+  }
+  fn decide(approved) {
+    working.set(true)
+    try {
+      update(post("/api/runs/" + run.id + "/approvals/" + run.approval.id, {approved: approved, version: run.version}))
+      automatic.set(approved)
+    } catch (reason) { error.set(str(reason)); refresh() }
+    working.set(false)
+  }
+  fn approve() { decide(true) }
+  fn deny() { automatic.set(false); decide(false) }
+  fn schedule() {
+    let live = true
+    let timer = null
+    fn tick() {
+      if !live { return null }
+      if run.inFlight { refresh() }
+      else if automatic.value && run.state == "ready" { advance() }
+    }
+    fn leave() { live = false; automatic.set(false) }
+    window.addEventListener("pagehide", leave)
+    if !ended(run) && (run.inFlight || (automatic.value && run.state == "ready")) { timer = setTimeout(tick, 350) }
+    fn cleanup() {
+      live = false
+      if timer != null { clearTimeout(timer) }
+      window.removeEventListener("pagehide", leave)
+    }
+    return cleanup
+  }
+  ui.effect("phase", [run.id, run.version, run.state, run.inFlight, automatic.value], schedule)
+  let events = []
+  for entry in slice(run.events, -14) {
+    push(events, e("li", {class: "event"}, [e("span", {class: "event-sequence"}, [str(entry.sequence)]), e("div", {}, [e("span", {class: "event-kind"}, [entry.kind]), e("pre", {}, [entry.message])])]))
+  }
+  let controls = []
+  if !ended(run) {
+    if automatic.value { push(controls, button("Pause", pause, "button compact")) }
+    else { push(controls, button("Resume ↗", resume, "button primary compact", run.inFlight || run.state == "awaiting_approval")) }
+    push(controls, button("Stop", stop, "button danger compact", run.stopRequested))
+  }
+  push(controls, button("Refresh", refresh, "button ghost compact"))
+  let approval = null
+  if run.approval != null {
+    approval = e("section", {class: "approval", "aria-label": "Tool approval"}, [e("div", {class: "eyebrow"}, ["YOUR AUTHORIZATION REQUIRED"]), e("h3", {}, [run.approval.operation]), e("p", {}, ["Review the operation and affected paths. Approval applies only to these exact arguments."]), e("pre", {class: "approval-arguments"}, [to_json(run.approval.arguments)]), e("div", {class: "actions"}, [button("Approve operation", approve, "button primary", working.value), button("Deny", deny, "button danger", working.value)])])
+  }
+  let final = null
+  if ended(run) {
+    let outputLinks = []
+    if run.artifacts != null {
+      for file in run.artifacts { push(outputLinks, e("li", {}, [link("/artifacts/" + file.id, file.name + " ↗")])) }
+    }
+    final = e("section", {class: "run-result"}, [e("h3", {}, ["Result"]), e("pre", {}, [run.result]), e("ul", {class: "output-links"}, outputLinks), link("/artifacts", "Explore artifacts ↗")])
+  }
+  let progressText = "Paused between phases. Resume to continue."
+  if run.inFlight || automatic.value { progressText = "Processing one phase at a time." }
+  if run.state == "awaiting_approval" { progressText = "Waiting for your decision." }
+  if ended(run) { progressText = "Run finished." }
+  return e("section", {class: "panel run-panel", "aria-label": "Run activity"}, [e("div", {class: "panel-top"}, [e("h2", {}, ["Run activity"]), badge(join(split(run.state, "_"), " "))]), e("div", {class: "run-meta"}, [e("span", {}, [run.sessionId]), e("span", {}, [str(run.steps) + " / " + str(run.maxSteps) + " STEPS"])]), e("p", {class: "muted", role: "status"}, [progressText]), e("div", {class: "actions"}, controls), notice(error.value), approval, e("ol", {class: "events", "aria-label": "Progress events"}, events), final, e("p", {class: "fine-print"}, ["Leaving this page pauses future phases. An executing call may finish. Stop never undoes completed work."])])
+}
+
+export fn mount(component) {
+  let page = document.body.getAttribute("data-page")
+  let nav = document.querySelector("[data-nav='" + page + "']")
+  if nav != null { nav.setAttribute("aria-current", "page") }
+  UI.mount("#app", Frame, {component: component})
+}

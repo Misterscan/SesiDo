@@ -1,0 +1,184 @@
+/** Request-driven run state machine. Backend functions are injectable for deterministic tests. */
+allow "platform" in as Platform
+allow "storage" in as Storage
+allow "catalog" in as Catalog
+
+let backend = null
+let directory = ""
+let records = {}
+let activeId = ""
+
+export fn terminal(run) { return includes(["completed", "failed", "stopped", "interrupted"], run.state) }
+
+export fn initialize(adapter, path) {
+  backend = adapter
+  directory = path
+  records = {}
+  activeId = ""
+  make_dir(directory)
+  for entry in list_dir(directory) {
+    if regex("^[a-f0-9]{48}\\.json$", entry, {mode: "test"}) {
+      let run = Storage.read(directory + "/" + entry)
+      if !terminal(run) {
+        run.state = "interrupted"
+        run.inFlight = false
+        run.approval = null
+        run.result = "Server restarted. This run was interrupted; start a new run to retry."
+        run.version = run.version + 1
+        event(run, "interrupted", run.result)
+        persist(run)
+      }
+      records[run.id] = run
+    }
+  }
+}
+
+fn persist(run) { Storage.save(directory + "/" + run.id + ".json", run) }
+fn event(run, kind, message) {
+  push(run.events, {sequence: len(run.events) + 1, kind: kind, message: str(message), timestamp: time()})
+}
+
+export fn get(id) { return records[id] }
+export fn active() { if activeId == "" { return null } return records[activeId] }
+export fn busy() { return activeId != "" }
+
+fn finish(run, state, message) {
+  if run.stopRequested && state != "stopped" {
+    state = "stopped"
+    message = "Stopped. An executing call may have finished; no further phases will run."
+  }
+  run.state = state
+  run.result = str(message)
+  run.approval = null
+  run.phase = "done"
+  event(run, state, message)
+  backend.saveTurn(run.sessionId, run.message, run.result)
+}
+
+/** Create a validated run and reserve the single engine slot before any awaited work. */
+export fn create(data) {
+  if busy() { return {status: 409, body: {error: "Another run is active. Resume or stop it first."}} }
+  if type(data) != "object" { return {status: 422, body: {error: "Expected a JSON object."}} }
+  if type(data.sessionId) != "string" || !regex("^[A-Za-z0-9_-]{1,80}$", data.sessionId, {mode: "test"}) {
+    return {status: 422, body: {error: "Invalid session ID."}}
+  }
+  if !includes(backend.models(), data["model"]) { return {status: 422, body: {error: "Select a configured model alias."}} }
+  let limit = data.maxSteps
+  if type(limit) != "number" || limit < 1 || limit > 100 || floor(limit) != limit { return {status: 422, body: {error: "Step budget must be an integer from 1 to 100."}} }
+  let message = data.message
+  let pending = null
+  if data.kind == "workflow" {
+    let workflow = Catalog.findWorkflow(data.workflow)
+    if workflow == null { return {status: 422, body: {error: "Unknown workflow."}} }
+    let invalid = Catalog.validateWorkflow(workflow, data.inputs)
+    if invalid != "" { return {status: 422, body: {error: invalid}} }
+    pending = {name: workflow.tool, arguments: data.inputs}
+    message = workflow.title + ": " + to_json(data.inputs)
+  } else if data.kind != "agent" { return {status: 422, body: {error: "Unknown run kind."}} }
+  if type(message) != "string" || trim(message) == "" || len(message) > 100000 { return {status: 422, body: {error: "Enter a message of up to 100,000 characters."}} }
+  let run = {id: Platform.identifier(), sessionId: data.sessionId, kind: data.kind, workflow: data.workflow, message: message, "model": data["model"], maxSteps: limit, steps: 0, state: "ready", phase: "initialize", version: 0, inFlight: false, stopRequested: false, pending: pending, approval: null, observations: "", events: [], artifacts: [], result: "", created: time()}
+  records[run.id] = run
+  activeId = run.id
+  event(run, "created", "Run ready. Advance to begin.")
+  persist(run)
+  return {status: 201, body: run}
+}
+
+/** Advance exactly one phase. A version precondition makes retries and stale tabs harmless. */
+export fn advance(id, version) {
+  let run = get(id)
+  if run == null { return {status: 404, body: {error: "Run not found."}} }
+  if terminal(run) || run.inFlight || run.version != version || run.state == "awaiting_approval" {
+    return {status: 409, body: {error: "Run changed, is busy, or needs approval. Refresh its status."}}
+  }
+  run.inFlight = true
+  run.state = "running"
+  run.version = run.version + 1
+  persist(run)
+  try {
+    if run.phase == "initialize" {
+      backend.begin(run.sessionId, run.message)
+      if run.kind == "workflow" { run.phase = "prepare" } else { run.phase = "model_step" }
+      event(run, "initialized", "Session ready.")
+    } else if run.phase == "model_step" {
+      if run.steps >= run.maxSteps { finish(run, "failed", "Reached the step budget without a verified final answer.") }
+      else {
+        run.steps = run.steps + 1
+        event(run, "step", "Requesting agent step " + str(run.steps) + " / " + str(run.maxSteps))
+        let step = backend.step(run)
+        if type(step) != "object" || type(step.finished) != "bool" { raise_error("InvalidStep", "The model returned an invalid agent step.") }
+        if step.finished {
+          if type(step.final_answer) != "string" || trim(step.final_answer) == "" { raise_error("InvalidStep", "Final answer was empty.") }
+          let checked = backend.verify(step.final_answer)
+          if checked == step.final_answer { finish(run, "completed", checked) }
+          else { run.observations = run.observations + "\nEvidence check: " + checked; event(run, "evidence", checked) }
+        } else {
+          if type(step.tool_name) != "string" || type(step.tool_args) != "object" { raise_error("InvalidStep", "Expected a tool name and object arguments.") }
+          run.pending = {name: step.tool_name, arguments: step.tool_args}
+          run.phase = "prepare"
+          event(run, "tool", "Prepared " + step.tool_name)
+        }
+      }
+    } else if run.phase == "prepare" {
+      backend.validate(run.pending.name, run.pending.arguments)
+      if backend.needsApproval(run.pending.name, run.pending.arguments) {
+        run.approval = {id: Platform.identifier(), operation: run.pending.name, arguments: run.pending.arguments}
+        run.state = "awaiting_approval"
+        event(run, "approval", "Review " + run.pending.name + " and its exact arguments before execution.")
+      }
+      run.phase = "execute"
+    } else if run.phase == "execute" {
+      let before = {}
+      if backend.snapshot != null {
+        for file in backend.snapshot() { before[file.id] = file.modified + ":" + str(file.size) }
+      }
+      let result = backend.dispatch(run.pending.name, run.pending.arguments)
+      backend.observe(run.pending.name, run.pending.arguments, result)
+      if backend.snapshot != null {
+        for file in backend.snapshot() {
+          if before[file.id] != file.modified + ":" + str(file.size) { push(run.artifacts, {id: file.id, name: file.name}) }
+        }
+      }
+      event(run, "result", result)
+      run.observations = slice(run.observations + "\nTool: " + run.pending.name + "\nResult: " + slice(str(result), 0, 12000), -48000)
+      if run.kind == "workflow" {
+        let status = "completed"
+        if regex("^(error|failed|execution error|model request failed|browser operation failed|research failed|code generation failed|summarization failed)", to_lower(trim(str(result))), {mode: "test"}) { status = "failed" }
+        finish(run, status, result)
+      } else { run.pending = null; run.phase = "model_step" }
+    }
+    if run.stopRequested && run.state != "stopped" { finish(run, "stopped", "Stopped. An executing call may have finished; no further phases will run.") }
+    if !terminal(run) && run.state != "awaiting_approval" { run.state = "ready" }
+  } catch (error) { finish(run, "failed", "Run failed: " + str(error)) }
+  run.inFlight = false
+  if terminal(run) { activeId = "" }
+  persist(run)
+  return {status: 200, body: run}
+}
+
+/** Authorize only the currently displayed operation; denial terminates the run. */
+export fn decide(id, approvalId, approved, version) {
+  let run = get(id)
+  if run == null { return {status: 404, body: {error: "Run not found."}} }
+  if run.inFlight || run.state != "awaiting_approval" || run.approval == null || run.approval.id != approvalId || run.version != version || type(approved) != "bool" {
+    return {status: 409, body: {error: "Approval is stale or already resolved."}}
+  }
+  run.version = run.version + 1
+  run.approval = null
+  if approved { run.state = "ready"; event(run, "approved", "Approved the exact pending operation.") }
+  else { finish(run, "stopped", "User denied the operation. No equivalent action will be attempted."); activeId = "" }
+  persist(run)
+  return {status: 200, body: run}
+}
+
+export fn stop(id) {
+  let run = get(id)
+  if run == null { return {status: 404, body: {error: "Run not found."}} }
+  if terminal(run) { return {status: 409, body: {error: "Run has already ended."}} }
+  run.stopRequested = true
+  run.version = run.version + 1
+  if !run.inFlight { finish(run, "stopped", "Stopped by user."); activeId = "" }
+  else { event(run, "stopping", "Stop requested; waiting for the executing phase to finish.") }
+  persist(run)
+  return {status: 200, body: run}
+}

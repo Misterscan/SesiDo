@@ -1,0 +1,9 @@
+/** Check the application and run its tests with the installed Sesi runtime. */
+for file in ["build/index.sesi", "web/server.sesi", "web/runs.sesi", "web/backend.sesi", "web/artifacts.sesi", "web/catalog.sesi", "web/platform.sesi", "web/storage.sesi", "web/tests.sesi", "web/ui/client.sesi", "web/ui/console.sesi", "web/ui/workflows.sesi", "web/ui/artifacts.sesi", "web/ui/settings.sesi"] {
+  show file
+  show sesi(file, true, true)
+}
+for page in ["console", "workflows", "artifacts", "settings"] {
+  show exec("sesi build web/ui/" + page + ".sesi")
+}
+sesi("web/tests.sesi", true)

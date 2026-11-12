@@ -4,12 +4,11 @@ allow "../utils/safe" in as Safe; allow "./docs" in as Docs; allow "./helpers" i
 // Load persona components
 let sysPath = "sesi_modules/SesiDo/database/.agent/SYSTEM_INSTRUCTION.md"; let toolsPath = "sesi_modules/SesiDo/database/.agent/tools.md"
 let systemInstruction = Safe.readFile(sysPath); let toolsMD = Safe.readFile(toolsPath); if systemInstruction == null || trim(systemInstruction) == "" { sysPath = "database/.agent/SYSTEM_INSTRUCTION.md"; systemInstruction = Safe.readFile(sysPath) }if toolsMD == null || trim(toolsMD) == "" { toolsPath = "database/.agent/tools.md"; toolsMD = Safe.readFile(toolsPath) }
-let agentTools = Helpers.getHelperContent(); let agentBasicsMD = Docs.getBasicsContent(); let agentOptionalMD = Docs.getOptionalContent(); let agentOtherMD = Docs.getOtherContent()
+let agentTools = Helpers.getHelperContent(); let agentBasicsMD = Docs.getBasicsContent(); let agentOtherMD = Docs.getOtherContent()
 // Export persona components
 export fn getSystemInstruction() -> string {return systemInstruction}
 export fn getToolsMD() -> string {return toolsMD}
 export fn getAgentBasicsMD() -> string {return agentBasicsMD}
-export fn getAgentOptionalMD() -> string {return agentOptionalMD}
 export fn getAgentOtherMD() -> string {return agentOtherMD}
 export fn getAgentTools() -> string {return agentTools}
 
@@ -27,39 +26,23 @@ export fn getAgentTools() -> string {return agentTools}
   Returns:
   - None.
 */
-make AgentVoice {
-    let active = false
-    let voiceOn = false
-
-    // Starts the voice mode with the given choice.
-    //
-    // Parameters:
-    // - `choice`: A boolean indicating whether to start the voice mode (true) or not (false).
-    //
-    // Returns:
-    // - None.
-    fn start(self, choice) {
-        self.voiceOn = choice == true
-        if self.voiceOn {
-            speech("Hello, I am Sey-see Do, your AI agent. How can I assist you today?")
-        } else {
-            show "[SesiDo]: Voice mode is disabled."
-        }
+export make AgentVoice {
+  let voiceOn=false
+  fn start(self) { self.voiceOn = false }
+  fn toggle(self) {
+    if self.voiceOn {
+      self.voiceOn = false
+      show "[SesiDo]: Voice mode disabled."
+    } else {
+      self.voiceOn = true
+      show "[SesiDo]: Voice mode enabled."
+      speech("Hello, I am Sey-see Do, your AI agent. How can I assist you today?")
     }
-
-    // Handles the agent's voice response.
-    //
-    // Parameters:
-    // - `message`: The message to be spoken by the agent.
-    //
-    // Returns:
-    // - None.
-    fn response(self, message) {
-        if self.voiceOn {
-            show "[SesiDo]: Speaking response:" message
-            speech(message)
-        } else {
-            show "[SesiDo]: Voice mode is disabled. Not speaking."
-        }
+  }
+  fn response(self, message) {
+    if self.voiceOn{
+      message = split(split(message, "\n"), ". ")
+      for line in message { if !includes(line, "/") && !includes(line, "-") || !includes(line, "_") { speech(line) } }
     }
+  }
 }

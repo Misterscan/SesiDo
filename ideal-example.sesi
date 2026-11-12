@@ -1,0 +1,300 @@
+allow "std/draw" in as Draw
+allow "std/math" in as Math
+
+// A deterministic, fine-grained material variation for individual mosaic pixels.
+fn grain(a, b) {
+  let n = Math.sin(a * 127.1 + b * 311.7) * 43758.5453
+  return n - floor(n)
+}
+
+// Encode a shaded RGB color without relying on external image libraries.
+fn channel(n) {
+  let digits = "0123456789abcdef"
+  n = floor(Math.max(0, Math.min(255, n)))
+  return slice(digits, floor(n / 16), floor(n / 16) + 1) + slice(digits, n % 16, n % 16 + 1)
+}
+fn color(r, g, b) {
+  return "#" + channel(r) + channel(g) + channel(b)
+}
+
+// Procedural walnut bookcases: upright partitions, shelves, books and gilt lettering.
+fn bookcase(u, y, seed) {
+  let bay = floor(u / 2.35)
+  let bx = u - bay * 2.35
+  let row = floor((y - 0.38) / 0.86)
+  let ry = y - 0.38 - row * 0.86
+  let timber = 5 * Math.sin(u * 95 + y * 3) + 3 * Math.sin(u * 211)
+  let c = [72 + timber, 39 + timber * 0.65, 24 + timber * 0.35]
+  if y < 0.38 {
+    c = [65 + timber, 33 + timber * 0.6, 20]
+    if y > 0.29 { c = [132, 82, 41] }
+    return c
+  }
+  if y > 6.42 {
+    c = [92 + timber, 49 + timber * 0.6, 27]
+    if y > 6.51 && y < 6.58 { c = [179, 119, 58] }
+    if y > 6.73 && y < 6.82 { c = [151, 94, 43] }
+    return c
+  }
+  if bx < 0.115 || bx > 2.255 {
+    c = [104 + timber, 58 + timber * 0.6, 31]
+    if bx > 0.035 && bx < 0.052 { c = [171, 111, 55] }
+    if bx > 2.29 && bx < 2.31 { c = [48, 25, 17] }
+    return c
+  }
+  if ry < 0.075 {
+    c = [113 + timber, 66 + timber * 0.6, 35]
+    if ry < 0.017 { c = [177, 119, 65] }
+    if ry > 0.055 { c = [42, 23, 16] }
+    return c
+  }
+  c = [30, 23, 20]
+  let slot = floor((bx - 0.12) / 0.137)
+  let sx = (bx - 0.12) / 0.137 - slot
+  let key = bay * 43 + slot + seed * 97
+  let h = 0.43 + grain(key, row + 13) * 0.30
+  let gap = grain(key, row + 83)
+  if gap > 0.965 { return c }
+  if ry > 0.095 && ry < h && sx > 0.055 && sx < 0.94 {
+    let palette = [[106, 42, 36], [36, 73, 65], [38, 57, 79], [133, 88, 46], [94, 64, 68], [161, 132, 84], [66, 76, 43], [62, 36, 32], [175, 151, 107], [47, 75, 83]]
+    let p = palette[floor(grain(key + 3, row + 2) * len(palette))]
+    let shade = 0.82 + 0.18 * Math.sin(sx * Math.PI)
+    c = [p[0] * shade, p[1] * shade, p[2] * shade]
+    if sx < 0.12 { c = [p[0] * 0.55, p[1] * 0.55, p[2] * 0.55] }
+    let band = ry / h
+    if (band > 0.19 && band < 0.208) || (band > 0.82 && band < 0.84) {
+      c = [186, 151, 88]
+    }
+    if sx > 0.26 && sx < 0.77 && band > 0.51 && band < 0.69 {
+      let line = floor(ry * 132)
+      if line % 4 == 0 && grain(key, line) > 0.28 { c = [194, 169, 111] }
+    }
+  }
+  return c
+}
+
+// Perspective projection shared by the furniture and small reading-room details.
+fn project(x, y, z) {
+  return [512 + 780 * x / (z + 7), 425 - 780 * (y - 3.2) / (z + 7)]
+}
+fn face(points, fill) {
+  let screen = []
+  for p in points { push(screen, project(p[0], p[1], p[2])) }
+  Draw.pixel_polygon(screen, fill)
+}
+
+Draw.clear()
+
+// Every output pixel is calculated independently; there are no tile bevels or grid lines.
+let py = 0
+while py < 1024 {
+  let dy = (425 - py) / 780
+  let px = 0
+  while px < 1024 {
+    let dx = (px - 512) / 780
+    let t = 29
+    let surface = 0
+    let wallSide = 1
+    if dx != 0 {
+      let sideT = 5.3 / Math.abs(dx)
+      if sideT < t {
+        t = sideT
+        surface = 1
+        if dx < 0 { wallSide = -1 }
+      }
+    }
+    if dy < 0 {
+      let floorT = -3.2 / dy
+      if floorT < t { t = floorT; surface = 2 }
+    }
+    if dy > 0 {
+      let ceilingT = 4.2 / dy
+      if ceilingT < t { t = ceilingT; surface = 3 }
+    }
+    let x = dx * t
+    let y = 3.2 + dy * t
+    let z = t - 7
+    let c = [100, 65, 40]
+
+    if surface == 1 {
+      c = bookcase(z + 18.8, y, wallSide + 5)
+      if y > 6.85 {
+        c = [155, 128, 88]
+        if y > 7.12 { c = [93, 61, 36] }
+      }
+    }
+
+    if surface == 0 {
+      c = bookcase(x + 7.05, y, 19)
+      let ax = Math.abs(x)
+      // A tall, round-headed window set into a limestone arch.
+      let outerArch = false
+      let innerArch = false
+      if ax < 2.10 && y > 1.10 && y < 4.95 { outerArch = true }
+      if x * x + (y - 4.95) * (y - 4.95) < 2.10 * 2.10 && y >= 4.95 { outerArch = true }
+      if ax < 1.72 && y > 1.48 && y < 4.95 { innerArch = true }
+      if x * x + (y - 4.95) * (y - 4.95) < 1.72 * 1.72 && y >= 4.95 { innerArch = true }
+      if outerArch {
+        let stone = grain(floor(x * 9), floor(y * 8))
+        c = [177 + stone * 19, 153 + stone * 15, 111 + stone * 13]
+        if ax > 1.95 { c = [113, 82, 48] }
+      }
+      if innerArch {
+        let glow = 1 - ax / 2.5
+        c = [211 + glow * 26, 211 + glow * 23, 175 + glow * 35]
+        let tree = Math.sin(x * 23) * 0.18 + Math.sin(x * 61) * 0.05
+        if y < 2.23 + tree { c = [130, 153, 126] }
+        if y < 1.83 + tree { c = [103, 129, 110] }
+        if Math.abs(x) < 0.052 || Math.abs(ax - 0.85) < 0.034 { c = [89, 66, 39] }
+        if Math.abs(y - 3.18) < 0.042 || Math.abs(y - 4.92) < 0.045 { c = [95, 72, 42] }
+        if y > 4.95 {
+          let angle = Math.atan2(y - 4.95, x)
+          let spoke = Math.sin(angle * 6)
+          if Math.abs(spoke) < 0.045 { c = [105, 79, 43] }
+          let rad = Math.sqrt(x * x + (y - 4.95) * (y - 4.95))
+          if Math.abs(rad - 0.86) < 0.032 { c = [106, 79, 44] }
+        }
+      }
+      if ax < 2.2 && y > 1.28 && y < 1.43 { c = [191, 158, 102] }
+      if y < 0.36 { c = [68, 40, 25] }
+    }
+
+    if surface == 2 {
+      let plank = floor((x + 10.6) / 0.52)
+      let longitudinal = z + (plank % 2) * 1.3
+      let end = longitudinal / 2.6 - floor(longitudinal / 2.6)
+      let across = (x + 10.6) / 0.52 - plank
+      let wood = grain(plank, floor(longitudinal / 2.6))
+      let streak = Math.sin(x * 138 + Math.sin(z * 0.7) * 3) * 4
+      c = [132 + wood * 34 + streak, 88 + wood * 27 + streak, 48 + wood * 18 + streak * 0.5]
+      if across < 0.018 || end < 0.008 { c = [70, 46, 29] }
+      // A narrow patterned red runner keeps the central aisle readable.
+      if Math.abs(x) < 1.03 {
+        let border = Math.abs(x)
+        let motif = Math.sin(x * 21 + z * 6) * Math.sin(z * 7 - x * 10)
+        c = [91 + motif * 12, 34 + motif * 5, 32 + motif * 4]
+        if border > 0.88 { c = [172, 132, 74] }
+        if border > 0.94 { c = [80, 40, 29] }
+        if border > 0.98 { c = [177, 137, 81] }
+        if border < 0.79 && motif > 0.76 { c = [157, 103, 65] }
+        if Math.abs(Math.sin(z * 2.3)) < 0.045 && border < 0.78 { c = [131, 77, 52] }
+      }
+      let windowLight = Math.exp(-x * x / 6 - (z - 15) * (z - 15) / 95)
+      c = [c[0] + windowLight * 34, c[1] + windowLight * 27, c[2] + windowLight * 14]
+    }
+
+    if surface == 3 {
+      let beam = (z + 14.1) / 3.7
+      let f = beam - floor(beam)
+      c = [124, 101, 72]
+      let coff = Math.abs(x) / 1.77
+      let cf = coff - floor(coff)
+      if f < 0.075 || cf < 0.055 { c = [59, 37, 24] }
+      else if f < 0.10 || cf < 0.075 { c = [171, 121, 59] }
+      else {
+        let inset = Math.sin(f * Math.PI) * Math.sin(cf * Math.PI)
+        c = [119 + inset * 30, 94 + inset * 28, 63 + inset * 23]
+      }
+    }
+
+    // Ray-intersect the two continuous walnut reading tables.
+    if dy < 0 {
+      let tt = (1.36 - 3.2) / dy
+      let tx = dx * tt
+      let tz = tt - 7
+      if tt < t && Math.abs(tx) > 1.42 && Math.abs(tx) < 3.88 && tz > -1.5 && tz < 13.8 {
+        let streak = Math.sin(tx * 125 + Math.sin(tz * 1.5)) * 4 + Math.sin(tx * 41) * 5
+        c = [103 + streak, 58 + streak * 0.7, 31 + streak * 0.35]
+        if Math.abs(tx) < 1.49 || Math.abs(tx) > 3.80 || tz < -1.40 || tz > 13.68 { c = [167, 113, 57] }
+        if Math.abs(tx) > 1.66 && Math.abs(tx) < 3.57 {
+          let desk = (tz + 1.5) / 3.6
+          let df = desk - floor(desk)
+          if df > 0.20 && df < 0.77 { c = [47 + streak * 0.3, 66 + streak * 0.4, 49 + streak * 0.25] }
+        }
+        t = tt
+      }
+    }
+
+    let depth = Math.min(1, t / 34)
+    let illumination = 0.76 + depth * 0.20
+    if surface == 1 { illumination = 0.69 + depth * 0.27 }
+    if surface == 3 { illumination = 0.76 }
+    let fleck = (grain(px + 77, py + 31) - 0.5) * 9
+    let vignette = 1 - 0.10 * Math.pow(Math.abs(px - 512) / 724, 2)
+    Draw.pixel(px, py, color((c[0] * illumination + fleck) * vignette, (c[1] * illumination + fleck) * vignette, (c[2] * illumination + fleck) * vignette))
+    px = px + 1
+  }
+  py = py + 1
+}
+
+// Small geometric book volumes, with flat, unbeveled raster faces.
+fn book(x, z, w, d, base, thick, cover) {
+  face([[x, base, z], [x + w, base, z], [x + w, base + thick, z], [x, base + thick, z]], "#d4c29a")
+  face([[x + w, base, z], [x + w, base, z + d], [x + w, base + thick, z + d], [x + w, base + thick, z]], "#ab9673")
+  face([[x, base + thick, z], [x + w, base + thick, z], [x + w, base + thick, z + d], [x, base + thick, z + d]], cover)
+  let a = project(x + 0.06, base + thick + 0.002, z + 0.07)
+  let b = project(x + w - 0.06, base + thick + 0.002, z + 0.07)
+  Draw.pixel_line(a[0], a[1], b[0], b[1], "#b69b65")
+}
+
+// Brass banker lamps with dark green glass shades, drawn far to near.
+fn lamp(x, z) {
+  let k = 780 / (z + 7)
+  let foot = project(x, 1.385, z)
+  Draw.pixel_ellipse(foot[0] + k * 0.09, foot[1] + k * 0.025, k * 0.30, k * 0.08, "#332b20")
+  Draw.pixel_ellipse(foot[0], foot[1], k * 0.23, k * 0.075, "#72562a")
+  Draw.pixel_ellipse(foot[0], foot[1] - k * 0.018, k * 0.19, k * 0.052, "#c9a456")
+  let top = project(x, 2.10, z)
+  Draw.pixel_rect(top[0] - k * 0.023, top[1], k * 0.046, foot[1] - top[1], "#967535")
+  Draw.pixel_rect(top[0] - k * 0.010, top[1], k * 0.010, foot[1] - top[1], "#e2bf6e")
+  let shade = project(x, 2.14, z)
+  Draw.pixel_ellipse(shade[0], shade[1] + k * 0.075, k * 0.39, k * 0.105, "#ead799")
+  Draw.pixel_ellipse(shade[0], shade[1] - k * 0.025, k * 0.42, k * 0.18, "#143f32")
+  Draw.pixel_rect(shade[0] - k * 0.42, shade[1] - k * 0.025, k * 0.84, k * 0.095, "#1c513c")
+  Draw.pixel_ellipse(shade[0] - k * 0.07, shade[1] - k * 0.075, k * 0.29, k * 0.075, "#2d7051")
+  Draw.pixel_line(shade[0] - k * 0.34, shade[1] + k * 0.07, shade[0] + k * 0.34, shade[1] + k * 0.07, "#baa467")
+  Draw.pixel_line(shade[0] + k * 0.29, shade[1] + k * 0.08, shade[0] + k * 0.29, shade[1] + k * 0.30, "#bf9a50")
+  Draw.pixel_circle(shade[0] + k * 0.29, shade[1] + k * 0.31, Math.max(1, k * 0.023), "#d4b06b")
+}
+
+// Table aprons and sturdy foreground legs.
+for side in [-1, 1] {
+  let nearX = side * 1.42
+  let farX = side * 3.88
+  face([[nearX, 1.36, -1.5], [farX, 1.36, -1.5], [farX, 1.15, -1.5], [nearX, 1.15, -1.5]], "#57301d")
+  face([[nearX, 1.36, -1.5], [nearX, 1.36, 13.8], [nearX, 1.17, 13.8], [nearX, 1.17, -1.5]], "#633b23")
+  face([[side * 1.56, 1.17, -1.28], [side * 1.76, 1.17, -1.28], [side * 1.76, 0, -1.28], [side * 1.56, 0, -1.28]], "#4c2c1c")
+}
+
+for z in [11.5, 7.7, 3.9, 0.1] {
+  for side in [-1, 1] {
+    let x = side * 2.68
+    let bx = x - 0.43
+    book(bx, z + 0.24, 0.67, 0.85, 1.37, 0.075, "#6d3430")
+    book(bx + 0.08, z + 0.21, 0.60, 0.74, 1.445, 0.065, "#334857")
+    lamp(x + side * 0.18, z + 1.1)
+    // An open ivory book on the green writing surface.
+    let ox = x - 0.48
+    face([[ox, 1.375, z - 0.66], [ox + 0.46, 1.40, z - 0.61], [ox + 0.46, 1.40, z + 0.03], [ox, 1.375, z - 0.02]], "#e7d7ae")
+    face([[ox + 0.46, 1.40, z - 0.61], [ox + 0.93, 1.375, z - 0.66], [ox + 0.93, 1.375, z - 0.02], [ox + 0.46, 1.40, z + 0.03]], "#d7c69e")
+    let line = 0
+    while line < 7 {
+      let zz = z - 0.52 + line * 0.065
+      let a = project(ox + 0.07, 1.391, zz)
+      let b = project(ox + 0.38, 1.408, zz + 0.025)
+      let c = project(ox + 0.54, 1.408, zz + 0.025)
+      let d = project(ox + 0.85, 1.391, zz)
+      Draw.pixel_line(a[0], a[1], b[0], b[1], "#a89a7e")
+      Draw.pixel_line(c[0], c[1], d[0], d[1], "#a4977c")
+      line = line + 1
+    }
+  }
+}
+
+// Save the opaque 1024 by 1024 raster mosaic.
+try {
+  make_dir("generated_images/gpt-6.1-sol")
+  Draw.save_png("generated_images/gpt-6.1-sol/A_1024x1024_pixel_by_pixel_mosaic_of_a_library_interior_1024x1024_0.png", 1024, 1024, "#241c16")
+} catch (err) {
+  show "Could not save the library image:" err
+}

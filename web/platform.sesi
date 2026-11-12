@@ -1,0 +1,19 @@
+/** Small platform boundary for cryptographic IDs and canonical filesystem metadata. */
+export fn identifier() {
+  return trim(js("console.log(require('crypto').randomBytes(24).toString('hex'))"))
+}
+
+/** Return canonical metadata. No application decisions or mutations occur in JavaScript. */
+export fn metadata(path) {
+  return from_json(js("let fs=require('fs'), p=require('path'), a=JSON.parse(process.env.SESI_ARGS); let real=fs.realpathSync(a.path), s=fs.statSync(real); console.log(JSON.stringify({path:real,size:s.size,directory:s.isDirectory(),file:s.isFile(),name:p.basename(real),modified:s.mtime.toISOString()}))", {path: path}))
+}
+
+/** Get a stable opaque artifact identifier from its relative name. */
+export fn artifactId(path) {
+  return trim(js("console.log(require('crypto').createHash('sha256').update(JSON.parse(process.env.SESI_ARGS).path).digest('hex'))", {path: path}))
+}
+
+/** Read bounded bytes from a regular file descriptor, rejecting symlink replacement and growth. */
+export fn artifactBytes(root, path) {
+  return trim(js("let fs=require('fs'),a=JSON.parse(process.env.SESI_ARGS),limit=67108864; if(fs.realpathSync(a.path)!==a.path||!a.path.startsWith(a.root+'/'))throw Error('Artifact escaped its root'); let fd=fs.openSync(a.path,fs.constants.O_RDONLY|fs.constants.O_NOFOLLOW); try{let s=fs.fstatSync(fd),current=fs.statSync(a.path); if(!s.isFile()||s.size>limit||s.ino!==current.ino||s.dev!==current.dev||fs.realpathSync(a.path)!==a.path)throw Error('Artifact changed or exceeds limit'); let data=Buffer.alloc(s.size),offset=0;while(offset<data.length){let count=fs.readSync(fd,data,offset,data.length-offset,offset);if(count===0)throw Error('Artifact changed during read');offset+=count} if(fs.fstatSync(fd).size!==s.size)throw Error('Artifact changed during read');console.log(data.toString('base64'))}finally{fs.closeSync(fd)}", {root: root, path: path}))
+}

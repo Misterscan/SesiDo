@@ -33,6 +33,49 @@
 
 ## Local Usage
 
+### SesiDo web workstation
+
+Start the Sesi server and compile the Sesi browser pages from this repository:
+
+```sh
+npm run web:build
+npm run web:start
+```
+
+Or use Sesi directly:
+
+```sh
+sesi build web/ui/console.sesi
+sesi build web/ui/workflows.sesi
+sesi build web/ui/artifacts.sesi
+sesi build web/ui/settings.sesi
+sesi -l web/server.sesi
+```
+
+Open the private launch URL printed by the server. It includes a fresh access token in its fragment. The UI removes that fragment from the address bar and keeps the token in the tab's session storage. API keys stay in the server environment (`OPENAI_API_KEY` and `GEMINI_API_KEY`, including values loaded from the existing `.env`). No key is sent to the browser.
+
+The app uses separate server-served pages and ordinary links:
+
+- `/console`: conversations, session creation/reset, model selection, agent progress, and exact-operation approvals.
+- `/workflows`: the workflow catalog; `/workflows/<name>` opens an individual tool form.
+- `/artifacts`: the artifact library; `/artifacts/<id>` opens metadata, an on-demand preview, and a download.
+- `/settings`: provider availability and persisted model alias mappings.
+
+The default port is 8080. Use `sesi -l web/server.sesi 8081` to select another port after building. The current `std/api` listener binds to the runtime's default network interface; workspace API routes require the per-launch token, allow only local Host values, and reject cross-origin requests. Keep the launch token private.
+
+Only one run can reserve the engine at a time. A page advances its run through individual requests. Leaving the page pauses subsequent phases; return and choose **Resume** to continue. A phase already executing may finish. **Stop** prevents later phases and does not roll back completed actions. A rejected operation stops that run without an alternate-tool retry. Restarting the server marks unfinished runs interrupted; retry by creating a new run.
+
+Run state and model overrides are stored under `SesiDo/database/web/` (override the state directory with `SESIDO_WEB_STATE`). Conversations use the existing SesiDo database. Generated output stays under the engine's configured `SesiDo/.artifacts/` directory. Artifact IDs are opaque; previews reject symlinks and traversal. HTML/SVG preview frames are sandboxed. Individual web downloads are limited to 64 MiB; larger files remain available at their displayed local paths.
+
+Build or verify the application independently:
+
+```sh
+npm run web:build
+sesi -l web/check.sesi
+```
+
+The check runner uses Sesi's own checking, browser compiler, and deterministic Sesi tests. `npm run web:check` runs the same script. The server exposes API documentation at `/docs` and its schema at `/openapi.json`; authenticated workspace operations live under `/api/` and accept `Authorization: Bearer <launch-token>`.
+
 The interactive chat application starts from `main.sesi` (which imports the module in `index.sesi`).
 
 - **Run the core agent**:

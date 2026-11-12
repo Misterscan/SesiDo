@@ -1,0 +1,71 @@
+allow "std/web" in as UI
+allow "client" in as C
+
+fn ArtifactDetail(props, ui) {
+  let file = ui.state("file", null)
+  let content = ui.state("content", null)
+  let error = ui.state("error", "")
+  let loading = ui.state("loading", false)
+  fn load() {
+    try { file.set(C.get("/api/artifacts/" + props.id)) } catch (reason) { error.set(str(reason)) }
+  }
+  ui.effect("metadata", [props.id], load)
+  fn preview() {
+    loading.set(true)
+    try { content.set(C.get("/api/artifacts/" + props.id + "/content")); error.set("") } catch (reason) { error.set(str(reason)) }
+    loading.set(false)
+  }
+  let detail = C.e("p", {class: "muted"}, ["Loading artifact metadata…"])
+  if file.value != null {
+    let item = file.value
+    let previewContent = C.e("div", {class: "artifact-placeholder"}, [C.e("div", {class: "empty-symbol", "aria-hidden": "true"}, ["↗"]), C.e("h2", {}, ["Ready when you are."]), C.e("p", {}, ["File contents are fetched only when you request them."]), C.button("Load preview & download", preview, "button primary", loading.value)])
+    if content.value != null {
+      let uri = "data:" + item.mime + ";base64," + content.value.data
+      let media = null
+      if item.mime == "image/svg+xml" || item.mime == "text/html" {
+        media = C.e("iframe", {title: "Isolated artifact preview", sandbox: "", src: uri, class: "artifact-frame", referrerpolicy: "no-referrer"})
+      } else if slice(item.mime, 0, len("image/")) == "image/" { media = C.e("img", {src: uri, alt: item.name, class: "artifact-image"}) }
+      else if slice(item.mime, 0, len("video/")) == "video/" { media = C.e("video", {src: uri, controls: true, preload: "metadata", class: "artifact-video"}) }
+      else if slice(item.mime, 0, len("audio/")) == "audio/" { media = C.e("audio", {src: uri, controls: true, preload: "metadata"}) }
+      else if slice(item.mime, 0, len("text/")) == "text/" || item.mime == "application/json" {
+        let decoded = atob(content.value.data)
+        try { decoded = decodeURIComponent(escape(decoded)) } catch (reason) { decoded = "Unable to decode text; use the download link." }
+        media = C.e("pre", {class: "artifact-text"}, [decoded])
+      } else { media = C.e("p", {class: "muted"}, ["No inline preview is available for this file type."]) }
+      previewContent = C.e("div", {class: "artifact-content"}, [media, C.e("a", {href: uri, download: item.name, class: "button primary"}, ["Download file ↓"])])
+    }
+    detail = C.e("div", {class: "artifact-detail"}, [C.e("section", {class: "panel artifact-metadata"}, [C.badge(item.mime), C.e("dl", {}, [C.e("dt", {}, ["FILE SIZE"]), C.e("dd", {}, [str(item.size) + " bytes"]), C.e("dt", {}, ["MODIFIED"]), C.e("dd", {}, [item.modified]), C.e("dt", {}, ["LOCAL FILE"]), C.e("dd", {class: "file-path"}, [item.path])]), C.e("p", {class: "fine-print"}, ["HTML and SVG previews are sandboxed. Files larger than 64 MiB should be opened locally."])]), C.e("section", {class: "panel preview-panel", "aria-label": "Artifact preview"}, [previewContent])])
+  }
+  let title = "Artifact."
+  if file.value != null { title = file.value.name }
+  return C.e("div", {}, [C.link("/artifacts", "← Artifact library"), C.heading("OUTPUT / DETAIL", title, "Inspect the output. Take it further."), C.notice(error.value), detail])
+}
+
+fn Artifacts(props, ui) {
+  let files = ui.state("files", [])
+  let loaded = ui.state("loaded", false)
+  let query = ui.state("query", "")
+  let error = ui.state("error", "")
+  fn load() {
+    try { files.set(C.get("/api/artifacts").artifacts); error.set("") } catch (reason) { error.set(str(reason)) }
+    loaded.set(true)
+  }
+  ui.effect("list", [], load)
+  fn search(event) { query.set(event.target.value) }
+  let id = C.item()
+  if id != "" { return UI.child(ArtifactDetail, {id: id}, id) }
+  let rows = []
+  for file in files.value {
+    if query.value == "" || contains(to_lower(file.name), to_lower(query.value)) {
+      push(rows, C.e("a", {href: "/artifacts/" + file.id, class: "artifact-row"}, [C.e("span", {class: "file-symbol", "aria-hidden": "true"}, ["▧"]), C.e("div", {class: "file-name"}, [C.e("h2", {}, [file.name]), C.e("span", {}, [file.mime])]), C.e("span", {class: "file-size"}, [str(floor(file.size / 1024 + 0.5)) + " KB"]), C.e("span", {class: "file-date"}, [slice(file.modified, 0, 10)]), C.e("span", {class: "file-arrow", "aria-hidden": "true"}, ["↗"])]))
+    }
+  }
+  if len(rows) == 0 {
+    let message = "No artifacts yet. Run a workflow to create your first output."
+    if query.value != "" { message = "No files match this search." }
+    if !loaded.value { message = "Reading artifact library…" }
+    rows = [C.e("div", {class: "library-empty"}, [C.e("div", {class: "empty-symbol", "aria-hidden": "true"}, ["▧"]), C.e("p", {}, [message]), C.link("/workflows", "Open workflows ↗")])]
+  }
+  return C.e("div", {}, [C.heading("OUTPUT LIBRARY / 03", "Artifacts.", "Every output. A new starting point."), C.notice(error.value), C.e("div", {class: "library-toolbar"}, [C.field("Search files", "artifact-search", C.e("input", {id: "artifact-search", type: "search", placeholder: "Find an artifact…", value: query.value, on_input: search})), C.badge(str(len(files.value)) + " FILES"), C.button("Refresh ↻", load, "button compact")]), C.e("section", {class: "panel artifact-list", "aria-label": "Artifact library"}, rows)])
+}
+C.mount(Artifacts)

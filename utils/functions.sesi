@@ -1,0 +1,80 @@
+/** Compare two values for equality or relational conditions. */
+fn equals(a: any, b: any) -> bool { return a == b }
+/** Compare two values for inequality. */
+fn not_equals(a: any, b: any) -> bool { return a != b }
+/** Compare if the first value is less than the second value. */
+fn less_than(a: any, b: any) -> bool { return a < b }
+/** Compare if the first value is greater than the second value. */
+fn greater_than(a: any, b: any) -> bool { return a > b }
+/** Compare if the first value is greater than or equal to the second value. */
+fn greater_than_or_equals(a: any, b: any) -> bool { return a >= b }
+/** Compare if the first value is less than or equal to the second value. */
+fn less_than_or_equals(a: any, b: any) -> bool { return a <= b }
+/**
+  Retrieves and displays the cumulative AI model usage cost for the current execution run in USD.
+
+  Parameters:
+  - `display`: A boolean indicating whether to display the cost. Default is `true`.
+
+  Returns:
+  - A string representing the formatted total execution cost in USD (e.g., "$0.0025 USD").
+
+  Example:
+  ```sesi
+  let action = model("gpt-6.1-sol") {thinking: "low"} {"Write a short story."}
+  let cost = show_cost()
+  show "Current execution cost:" cost
+  ```
+
+  Notes:
+  - Queries cumulative token usage metrics from the global `model_usage()` built-in function.
+  - Outputs the cost to standard output only if the `display` parameter is `true`.
+*/
+export fn show_cost(display: bool = true) -> string {
+  let cost = "$" + model_usage().total_cost_usd + " USD"
+  if cost | contains("null") { cost = cost | swap("$null USD", "N/A")  }
+  if display { show "Cost for this run:" cost }
+  return cost
+}
+
+/**
+  Converts a duration given in milliseconds into a formatted human-readable time string.
+
+  Parameters:
+  - milliseconds: The duration in milliseconds to format into time units.
+
+  Returns:
+  - A string representing the formatted time broken down by hours, minutes, and seconds (e.g., "1h 12m 30s" or "0s").
+
+  Example:
+  ```sesi
+  let formatted = format_time(3665000)
+  show formatted // "1h 1m 5s"
+  ```
+
+  Notes:
+  - Floors fractional values and defaults to "0s" if input milliseconds are zero or negative.
+  - Omits zero-value time components unless all higher time components are zero.
+*/
+export fn format_time(milliseconds: number) -> string {
+  if milliseconds | less_than_or_equals(0) { return "0s" }
+  let remaining = floor(milliseconds / 1000)
+  if remaining | less_than(0) { remaining = 0 }
+  let hours = floor(remaining / 3600)
+  let minutes = floor((remaining % 3600) / 60)
+  let secs = remaining % 60
+  let parts = []
+  if hours | greater_than(0) {
+    prompt label {hours "h"}
+    push(parts, label)
+  }
+  if minutes | greater_than(0) {
+    prompt label {minutes "m"}
+    push(parts, label)
+  }
+  if (secs | greater_than(0)) || (len(parts) | equals(0)) {
+    prompt label {secs "s"}
+    push(parts, label)
+  }
+  return join(parts, " ")
+}

@@ -1,0 +1,88 @@
+/** SesiDo engine adapter. The HTTP layer never invokes the terminal chat loop. */
+allow "../build/index" in as Engine
+allow "platform" in as Platform
+allow "artifacts" in as Artifacts
+
+export fn models() { return Engine.sesiDoModels }
+export fn initialize() { Engine.initialize(); Artifacts.initialize(Engine.artifactRoot()) }
+
+/** Confine file-oriented tool arguments to canonical workspace paths. */
+export fn workspacePath(value) {
+  return trim(js("let fs=require('fs'),p=require('path'),a=JSON.parse(process.env.SESI_ARGS),root=fs.realpathSync(a.root),target=p.resolve(root,a.value),probe=target; while(!fs.existsSync(probe)){let next=p.dirname(probe);if(next===probe)throw Error('Path has no existing ancestor');probe=next} let real=fs.realpathSync(probe),rel=p.relative(root,real); if(rel==='..'||rel.startsWith('..'+p.sep)||p.isAbsolute(rel))throw Error('Path resolves outside workspace'); let lexical=p.relative(root,target);if(lexical==='..'||lexical.startsWith('..'+p.sep)||p.isAbsolute(lexical))throw Error('Path is outside workspace'); console.log(target)", {root: $PWD, value: value}))
+}
+
+/** Validate the exact operation before presenting it for approval. */
+export fn validate(name, arguments) {
+  let registry = Engine.toolRegistry()
+  if registry[name] == null { raise_error("UnknownTool", "Unknown tool: " + name) }
+  for key in ["path", "destination", "dest", "target", "write"] {
+    if arguments[key] != null {
+      if type(arguments[key]) != "string" { raise_error("InvalidPath", "Expected a path string.") }
+      workspacePath(arguments[key])
+    }
+  }
+  if includes(["debugCode", "getImageInfo", "read", "runSesi"], name) && type(arguments.path) != "string" { raise_error("InvalidPath", "Supply an explicit path for this operation.") }
+  if arguments.path != null && includes(["read", "debugCode", "getImageInfo", "summarize", "runSesi"], name) {
+    let info = Platform.metadata(workspacePath(arguments.path))
+    if info.directory { raise_error("InvalidPath", "Select a file, not a directory.") }
+  }
+  if name == "browsePage" {
+    let url = arguments.url
+    if type(url) != "string" { raise_error("InvalidURL", "A URL is required.") }
+    if starts_with(to_lower(url), "file:") {
+      let path = trim(js("console.log(require('url').fileURLToPath(JSON.parse(process.env.SESI_ARGS).url))", {url: url}))
+      workspacePath(path)
+    } else if !contains(url, "://") && (contains(url, ".html") || contains(url, ".htm")) { workspacePath(url) }
+  }
+}
+
+export fn needsApproval(name, arguments) {
+  if includes(["research", "writeCode", "calculator", "createSVG", "generateVideo", "generateImage", "drawPixelArt", "drawImage"], name) { return false }
+  if name == "summarize" && arguments.path == null { return false }
+  if name == "browsePage" && starts_with(arguments.url, "https://") { return false }
+  return true
+}
+
+fn approvedInput(message) { return "y" }
+
+/** Dispatch after state-machine authorization; always restore CLI input afterwards. */
+export fn dispatch(name, arguments) {
+  validate(name, arguments)
+  Engine.setApprovalHandler(approvedInput)
+  try {
+    if name == "generateVideo" { arguments.duration = num(arguments.duration) }
+    return Engine.dispatchWebTool(name, arguments)
+  } catch (error) { raise_error("ToolError", str(error)) }
+  finally { Engine.setApprovalHandler(null) }
+}
+
+export fn adapter() {
+  return {models: models, begin: Engine.beginWebTurn, step: Engine.requestWebStep, validate: validate, needsApproval: needsApproval, dispatch: dispatch, observe: Engine.observeWebTool, verify: Engine.verifyWebAnswer, saveTurn: Engine.saveWebTurn, snapshot: Artifacts.listing}
+}
+
+export fn configuration() {
+  let aliases = []
+  let i = 0
+  for alias in Engine.sesiDoModels {
+    push(aliases, {alias: alias, providerModel: Engine.ogNames[i]})
+    i = i + 1
+  }
+  return {aliases: aliases, openaiConfigured: $OPENAI_API_KEY != null && $OPENAI_API_KEY != "", geminiConfigured: $GEMINI_API_KEY != null && $GEMINI_API_KEY != "", artifactRoot: Engine.artifactRoot()}
+}
+
+export fn sessionRecords() { return Engine.sessionRecords() }
+export fn sessionMessages(id) { return Engine.sessionMessages(id) }
+export fn createSession(id) { return Engine.openWebSession(id) }
+export fn resetSession(id) { Engine.openWebSession(id); return Engine.clearCurrentSession() }
+export fn artifactRoot() { return Engine.artifactRoot() }
+
+/** Apply a model override without storing or returning credentials. */
+export fn configure(alias, providerModel) {
+  if !includes(Engine.sesiDoModels, alias) || type(providerModel) != "string" || trim(providerModel) == "" || len(providerModel) > 200 { raise_error("InvalidModel", "Choose a configured alias and enter a model identifier.") }
+  Engine.setModel(alias, providerModel)
+  let i = 0
+  for current in Engine.sesiDoModels {
+    if current == alias { Engine.ogNames[i] = providerModel }
+    i = i + 1
+  }
+}

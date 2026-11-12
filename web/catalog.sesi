@@ -1,0 +1,34 @@
+/** Workflow catalog shared by the Sesi HTTP server and browser pages. */
+export let workflows = [
+  {id: "research", title: "Research", category: "Intelligence", tool: "research", description: "Investigate a topic and save a report.", fields: [{name: "query", label: "Research question", kind: "text"}]},
+  {id: "summarize", title: "Summarize text", category: "Intelligence", tool: "summarize", description: "Condense source material into a useful summary.", fields: [{name: "text", label: "Source text", kind: "text"}]},
+  {id: "summarize-file", title: "Summarize file", category: "Intelligence", tool: "summarize", description: "Read and summarize a workspace file.", fields: [{name: "path", label: "Workspace file path", kind: "path"}]},
+  {id: "write-code", title: "Write code", category: "Engineering", tool: "writeCode", description: "Generate a code response from a specification.", fields: [{name: "query", label: "Specification", kind: "text"}]},
+  {id: "debug-code", title: "Debug code", category: "Engineering", tool: "debugCode", description: "Inspect a workspace file and propose fixes.", fields: [{name: "path", label: "Workspace file path", kind: "path"}]},
+  {id: "calculate", title: "Calculator", category: "Intelligence", tool: "calculator", description: "Evaluate a mathematical expression.", fields: [{name: "expression", label: "Expression", kind: "text"}]},
+  {id: "browse", title: "Browse page", category: "Intelligence", tool: "browsePage", description: "Fetch, extract, analyze, research, or capture a web page.", fields: [{name: "url", label: "URL or workspace HTML path", kind: "url"}, {name: "operation", label: "Operation", kind: "select", values: ["fetch", "scrape", "research", "analyze", "screenshot"]}]},
+  {id: "svg", title: "Create SVG", category: "Studio", tool: "createSVG", description: "Create vector artwork from a description.", fields: [{name: "description", label: "Art direction", kind: "text"}]},
+  {id: "pixel-art", title: "Pixel art", category: "Studio", tool: "drawPixelArt", description: "Draw a pixel composition or avatar.", fields: [{name: "description", label: "Art direction", kind: "text"}]},
+  {id: "draw", title: "Draw image", category: "Studio", tool: "drawImage", description: "Render a drawn composition.", fields: [{name: "description", label: "Art direction", kind: "text"}]},
+  {id: "image", title: "Generate image", category: "Studio", tool: "generateImage", description: "Generate an image from a prompt.", fields: [{name: "query", label: "Image prompt", kind: "text"}]},
+  {id: "video", title: "Generate video", category: "Studio", tool: "generateVideo", description: "Generate a short video and verify the saved output.", fields: [{name: "query", label: "Video prompt", kind: "text"}, {name: "duration", label: "Duration in seconds", kind: "select", values: ["2", "4", "6", "8"]}, {name: "negative", label: "What to avoid", kind: "optional"}]},
+  {id: "inspect-image", title: "Inspect image", category: "Studio", tool: "getImageInfo", description: "Analyze a workspace image.", fields: [{name: "path", label: "Workspace image path", kind: "path"}]}
+]
+
+export fn findWorkflow(id) {
+  for item in workflows { if item.id == id { return item } }
+  return null
+}
+
+/** Validate form data before any provider or filesystem work. */
+export fn validateWorkflow(item, data) {
+  if type(data) != "object" { return "Workflow inputs must be an object." }
+  for field in item.fields {
+    let value = data[field.name]
+    if field.kind != "optional" {
+      if type(value) != "string" || trim(value) == "" { return field.label + " is required." }
+    }
+    if field.kind == "select" && !includes(field.values, value) { return "Invalid " + field.label }
+  }
+  return ""
+}

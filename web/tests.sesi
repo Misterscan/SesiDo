@@ -1,0 +1,160 @@
+/** Deterministic state-machine and artifact tests, runnable directly with `sesi -l web/tests.sesi`. */
+allow "runs" in as Runs
+allow "platform" in as Platform
+allow "catalog" in as Catalog
+allow "artifacts" in as Artifacts
+allow "storage" in as Storage
+
+let results = []
+fn assert_equals(actual, expected, name) {
+  if actual != expected { raise_error("TestFailure", name + ": expected " + str(expected) + ", received " + str(actual)) }
+  show "PASS:" name
+  return true
+}
+fn run_test_suite(name, checks) { show name ":" len(checks) "checks passed"; return true }
+let mode = "normal"
+let executions = 0
+let saves = 0
+let currentId = ""
+let fixture = "/private/tmp/sesido-tests-" + Platform.identifier()
+fn models() { return ["test"] }
+fn begin(id, message) { return null }
+fn step(run) {
+  if mode == "provider_failure" { raise_error("ProviderError", "simulated provider failure") }
+  if mode == "malformed" { return "not an object" }
+  if mode == "budget" { return {finished: true, final_answer: "unverified"} }
+  if run.steps == 1 { return {finished: false, tool_name: "read", tool_args: {path: "fixture.md"}} }
+  return {finished: true, final_answer: "Verified answer"}
+}
+fn validate(name, arguments) {
+  if name == "unknown" { raise_error("UnknownTool", "Unregistered tool") }
+}
+fn needsApproval(name, arguments) { return name == "read" }
+fn dispatch(name, arguments) {
+  executions = executions + 1
+  if mode == "stop_during_call" { Runs.stop(currentId) }
+  if mode == "tool_failure" { return "Error: simulated tool failure" }
+  return "verified fixture output"
+}
+fn observe(name, arguments, result) { return null }
+fn verify(answer) {
+  if mode == "budget" { return "Evidence is incomplete" }
+  return answer
+}
+fn saveTurn(id, message, answer) { saves = saves + 1 }
+let adapter = {models: models, begin: begin, step: step, validate: validate, needsApproval: needsApproval, dispatch: dispatch, observe: observe, verify: verify, saveTurn: saveTurn}
+Runs.initialize(adapter, fixture + "/runs")
+
+fn assert(actual, expected, name) { push(results, assert_equals(actual, expected, name)) }
+fn createAgent() { return Runs.create({kind: "agent", sessionId: "test-session", "model": "test", maxSteps: 20, message: "Read the fixture"}).body }
+fn advance(run) { return Runs.advance(run.id, run.version).body }
+fn createWorkflow() { return Runs.create({kind: "workflow", workflow: "calculate", inputs: {expression: "2+2"}, sessionId: "test-session", "model": "test", maxSteps: 20}).body }
+
+let missingRootRejected = false
+try { Artifacts.listing() } catch (error) { missingRootRejected = true }
+assert(missingRootRejected, true, "artifact discovery requires an initialized root")
+
+assert(Runs.create({}).status, 422, "invalid run rejected")
+assert(Runs.create({kind: "agent", sessionId: "../escape", "model": "test", maxSteps: 20, message: "x"}).status, 422, "unsafe session rejected")
+assert(Runs.create({kind: "agent", sessionId: "test", "model": "test", maxSteps: 0, message: "x"}).status, 422, "invalid budget rejected")
+assert(Runs.create({kind: "agent", sessionId: "test", "model": "unknown", maxSteps: 20, message: "x"}).status, 422, "unknown model rejected")
+assert(Catalog.validateWorkflow(Catalog.findWorkflow("video"), {query: "x", duration: "3", negative: ""}), "Invalid Duration in seconds", "workflow choices validated")
+
+let run = createAgent()
+assert(run.state, "ready", "new run waits for advance")
+assert(Runs.create({}).status, 409, "competing run rejected")
+assert(Runs.advance(run.id, 99).status, 409, "stale advance rejected")
+run = advance(run)
+run = advance(run)
+run = advance(run)
+assert(run.state, "awaiting_approval", "sensitive tool pauses for browser approval")
+assert(executions, 0, "tool never executes before approval")
+assert(Runs.advance(run.id, run.version).status, 409, "advance cannot bypass approval")
+let oldApproval = run.approval.id
+let oldVersion = run.version
+run = Runs.decide(run.id, oldApproval, true, oldVersion).body
+assert(Runs.decide(run.id, oldApproval, true, oldVersion).status, 409, "duplicate approval rejected")
+run = advance(run)
+assert(executions, 1, "approved tool executes exactly once")
+assert(Runs.advance(run.id, oldVersion).status, 409, "duplicate execution rejected")
+run = advance(run)
+assert(run.state, "completed", "agent reaches verified final answer")
+assert(Runs.busy(), false, "completion releases engine slot")
+assert(saves, 1, "completed turn stored once")
+
+run = createAgent()
+run = advance(run)
+run = advance(run)
+run = advance(run)
+run = Runs.decide(run.id, run.approval.id, false, run.version).body
+assert(run.state, "stopped", "denial terminates run intent")
+assert(executions, 1, "denied tool did not execute")
+assert(Runs.advance(run.id, run.version).status, 409, "denied run cannot resume or bypass")
+
+mode = "malformed"
+run = advance(createAgent())
+run = advance(run)
+assert(run.state, "failed", "malformed model output fails safely")
+mode = "provider_failure"
+run = advance(createAgent())
+run = advance(run)
+assert(run.state, "failed", "provider exception fails safely")
+mode = "budget"
+run = Runs.create({kind: "agent", sessionId: "test-session", "model": "test", maxSteps: 1, message: "test evidence"}).body
+run = advance(run)
+run = advance(run)
+assert(run.state, "ready", "unverified final answer does not complete")
+run = advance(run)
+assert(run.state, "failed", "step exhaustion ends the run")
+
+mode = "normal"
+run = createWorkflow()
+run = advance(run)
+run = advance(run)
+run = advance(run)
+assert(run.state, "completed", "workflow completes through the same lifecycle")
+mode = "tool_failure"
+run = createWorkflow()
+run = advance(run)
+run = advance(run)
+run = advance(run)
+assert(run.state, "failed", "workflow error string is not reported as success")
+
+mode = "stop_during_call"
+let savedBeforeStop = saves
+run = createWorkflow()
+currentId = run.id
+run = advance(run)
+run = advance(run)
+run = advance(run)
+assert(run.state, "stopped", "stop during executing call prevents completion")
+assert(run.inFlight, false, "executing phase releases its lock")
+assert(saves, savedBeforeStop + 1, "stop during call stores only one final turn")
+mode = "normal"
+run = createAgent()
+run = Runs.stop(run.id).body
+assert(run.state, "stopped", "stop between phases is immediate")
+
+run = createAgent()
+let pendingId = run.id
+Runs.initialize(adapter, fixture + "/runs")
+run = Runs.get(pendingId)
+assert(run.state, "interrupted", "restart interrupts unfinished runs")
+assert(Runs.busy(), false, "restart clears abandoned engine reservation")
+assert(Runs.advance(run.id, run.version).status, 409, "interrupted run cannot repeat operations")
+let stored = Storage.read(fixture + "/runs/" + run.id + ".json")
+assert(stored.state, "interrupted", "interruption is durable")
+
+make_dir(fixture + "/artifacts")
+write_file(fixture + "/artifacts/hello.md", "A safe artifact")
+write_file(fixture + "/outside.md", "private outside content")
+js("let fs=require('fs'),a=JSON.parse(process.env.SESI_ARGS);fs.symlinkSync(a.root+'/outside.md',a.root+'/artifacts/escape.md');fs.symlinkSync(a.root+'/artifacts',a.root+'/artifacts/cycle')", {root: fixture})
+Artifacts.initialize(fixture + "/artifacts")
+let files = Artifacts.listing()
+assert(len(files), 1, "artifact scanner rejects symlinks and directory cycles")
+assert(len(files[0].id), 64, "artifact IDs are opaque hashes")
+assert(Artifacts.content("../outside.md").status, 404, "artifact traversal rejected")
+assert(Artifacts.content(files[0].id).status, 200, "safe artifact content available")
+assert(Artifacts.content(files[0].id).body.encoding, "base64", "artifact content is encoded")
+
+if !run_test_suite("SesiDo web lifecycle and artifacts", results) { raise_error("TestFailure", "Web verification failed.") }

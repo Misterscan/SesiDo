@@ -7,7 +7,7 @@ allow "std/time" in with {
   Supports friendly aliases ("number", "name") or standard styles ("short", "medium", "long", "full").
   Also supports locale-specific formatting (e.g., "en-US", "fr-FR", "ja-JP").
 */
-export fn getDate(locale: string, dateStyle: string) -> string {
+export fn get_date(locale: string, dateStyle: string) -> string {
   let numerical = "short"
   let with_letters = "medium"
 
@@ -31,7 +31,7 @@ export fn getDate(locale: string, dateStyle: string) -> string {
   Supports friendly aliases ("basic", "in_ms", "detailed") or standard styles.
   Also supports locale-specific formatting (e.g., "en-US", "fr-FR", "ja-JP") and time zone specification (e.g., "America/New_York", "Europe/London").
 */
-export fn localTime(timeZone: string, locale: string, timeStyle: string) -> string {
+export fn local_time(timeZone: string, locale: string, timeStyle: string) -> string {
   let compacted = "short"
   let milliseconds = "medium"
   let verbose = "full"
@@ -59,7 +59,7 @@ export fn localTime(timeZone: string, locale: string, timeStyle: string) -> stri
 /* 
   Convert the current time into a universal readable format (UTC).
 */
-export fn universalTime() -> string {
+export fn universal_time() -> string {
   let timestamp = format(now(), {"timeZone": "UTC", "timeStyle": "medium"})
   return timestamp + " UTC"
 }
@@ -69,10 +69,10 @@ export fn universalTime() -> string {
   Replaces spaces, colons, and AM/PM markers to prevent filesystem errors.
   Supports locale-specific formatting and time zone specification.
 */
-export fn formattedTime(timeZone: string, locale: string) -> string {
-  let dateRef = getDate("number") // e.g., "6/4/2024"
-  let timeRef = localTime(timeZone, locale, "in_ms") // e.g., "12:04:32 PM"
-  
+export fn formatted_time(timeZone: string, locale: string) -> string {
+  let dateRef = get_date("number") // e.g., "6/4/2024"
+  let timeRef = local_time(timeZone, locale, "in_ms") // e.g., "12:04:32 PM"
+
   // Sequentially sanitize the string for cross-platform filesystem safety
   let safeTime = swap(timeRef, " ", "-")
   let safeDate = swap(dateRef, "/", "-")
@@ -98,10 +98,10 @@ export fn time_tools() {
 /*
   Register the tools for easy calls within your scripts
 */
-  register_tool("getDate",       getDate,       "Retrieve the current date. Accepts 'number', 'name', or standard styles.")
-  register_tool("localTime",     localTime,     "Retrieve the local time. Accepts 'basic', 'in_ms', 'detailed', or standard styles.")
-  register_tool("universalTime", universalTime, "Retrieve the current universal time (UTC) in short format.")
-  register_tool("formattedTime", formattedTime, "Retrieve a filesystem-safe timestamp (e.g., '12-04-32-PM') for file naming.")
+  register_tool("getDate",       get_date,       "Retrieve the current date. Accepts 'number', 'name', or standard styles.")
+  register_tool("localTime",     local_time,     "Retrieve the local time. Accepts 'basic', 'in_ms', 'detailed', or standard styles.")
+  register_tool("universalTime", universal_time, "Retrieve the current universal time (UTC) in short format.")
+  register_tool("formattedTime", formatted_time, "Retrieve a filesystem-safe timestamp (e.g., '12-04-32-PM') for file naming.")
 
   let _registry = list_tools()
   show "⏱️ timestamp tool registry loaded —" str(len(_registry)) "tools available"
@@ -111,15 +111,15 @@ export fn time_tools() {
 /*
   Example usage:
     You can use these in your script easily.
-    Just allow "timestamp" in with {getDate, localTime, universalTime, or formattedTime}, or simply as TS
+    Just allow "timestamp" in with {get_date, local_time, universal_time, or formatted_time}, or simply as TS
     - `basic` reads out `12:00 PM`
     - `in_ms` reads out `12:00:00 PM`
     - `detailed` reads out `12:00:00 PM Eastern Daylight Time`
 
     time_tools()
-    let local = TS.localTime("detailed")
-    let universal = TS.universalTime()
-    let formatted = TS.formattedTime()
+    let local = TS.local_time("detailed")
+    let universal = TS.universal_time()
+    let formatted = TS.formatted_time()
 
     show "Current time:" local
     show "Current time (UTC):" universal

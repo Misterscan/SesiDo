@@ -1,0 +1,91 @@
+allow "std/web" in as UI
+allow "client" in as C
+allow "../catalog" in as Catalog
+
+fn WorkflowField(props) {
+  let field = props.field
+  fn typeValue(event) { props.change(field.name, event.target.value) }
+  let control = null
+  let value = props.value
+  if value == null { value = "" }
+  if field.kind == "select" {
+    let options = []
+    for option in field.values { push(options, C.e("option", {value: option}, [option])) }
+    control = C.e("select", {id: "input-" + field.name, value: value, on_change: typeValue, disabled: props.locked}, options)
+  } else if field.kind == "text" || field.kind == "optional" {
+    control = C.e("textarea", {id: "input-" + field.name, rows: 5, value: value, on_input: typeValue, required: field.kind != "optional", disabled: props.locked})
+  } else { control = C.e("input", {id: "input-" + field.name, type: "text", value: value, on_input: typeValue, required: true, disabled: props.locked}) }
+  return C.field(field.label, "input-" + field.name, control)
+}
+
+fn WorkflowForm(props, ui) {
+  let workflow = props.workflow
+  let initial = {}
+  for field in workflow.fields {
+    initial[field.name] = ""
+    if field.kind == "select" { initial[field.name] = field.values[0] }
+  }
+  let draft = ui.state("draft", initial)
+  let run = ui.state("run", null)
+  let autostart = ui.state("autostart", false)
+  let error = ui.state("error", "")
+  let config = ui.state("config", null)
+  let alias = ui.state("alias", "SesiDo")
+  let busy = ui.state("busy", false)
+  fn load() {
+    try { config.set(C.get("/api/config")); run.set(C.recover()) } catch (reason) { error.set(str(reason)) }
+  }
+  ui.effect("load", [], load)
+  fn change(name, value) {
+    fn update(previous) {
+      let next = {}
+      for key in keys(previous) { next[key] = previous[key] }
+      next[name] = value
+      return next
+    }
+    draft.update(update)
+  }
+  fn selectAlias(event) { alias.set(event.target.value) }
+  fn updateRun(next) { run.set(next) }
+  fn submit(event) {
+    event.preventDefault()
+    busy.set(true)
+    try {
+      let next = C.post("/api/runs", {kind: "workflow", workflow: workflow.id, inputs: draft.value, sessionId: C.selectedSession(), "model": alias.value, maxSteps: 20})
+      C.remember(next)
+      run.set(next)
+      autostart.set(true)
+      error.set("")
+    } catch (reason) { error.set(str(reason)) }
+    busy.set(false)
+  }
+  let locked = busy.value || (run.value != null && !C.ended(run.value))
+  let fields = []
+  for field in workflow.fields { push(fields, UI.child(WorkflowField, {field: field, value: draft.value[field.name], change: change, locked: locked}, field.name)) }
+  let options = []
+  if config.value != null {
+    for modelItem in config.value.aliases { push(options, C.e("option", {value: modelItem.alias}, [modelItem.alias])) }
+  }
+  push(fields, C.field("Agent model alias", "workflow-model", C.e("select", {id: "workflow-model", value: alias.value, on_change: selectAlias, disabled: locked}, options)))
+  push(fields, C.e("p", {class: "fine-print"}, ["Specialized workflows use their existing SesiDo model aliases. Adjust those mappings in Settings. Session: " + C.selectedSession()]))
+  push(fields, C.e("button", {type: "submit", class: "button primary", disabled: locked || config.value == null}, ["Run " + workflow.title + " ↗"]))
+  let panel = C.e("section", {class: "panel workflow-note"}, [C.badge(workflow.category), C.e("h2", {}, ["One tool. Clear intent."]), C.e("p", {}, ["This form invokes SesiDo's existing " + workflow.tool + " workflow. Generated outputs are saved in the artifact library."]), C.link("/artifacts", "Open artifact library ↗")])
+  if run.value != null { panel = UI.child(C.RunPanel, {run: run.value, autostart: autostart.value, update: updateRun}, run.value.id) }
+  return C.e("div", {}, [C.link("/workflows", "← All workflows"), C.heading(workflow.category + " / WORKFLOW", workflow.title + ".", workflow.description), C.notice(error.value), C.e("div", {class: "workflow-layout"}, [C.e("form", {class: "panel workflow-form", on_submit: submit}, fields), panel])])
+}
+
+fn Workflows(props) {
+  let id = C.item()
+  if id != "" {
+    let workflow = Catalog.findWorkflow(id)
+    return UI.child(WorkflowForm, {workflow: workflow}, id)
+  }
+  let cards = []
+  let number = 1
+  for workflow in Catalog.workflows {
+    push(cards, C.e("a", {href: "/workflows/" + workflow.id, class: "workflow-card"}, [C.e("div", {class: "card-meta"}, [C.e("span", {}, ["TOOL / " + str(number)]), C.e("span", {}, [workflow.category])]), C.e("div", {class: "card-glyph", "aria-hidden": "true"}, ["↗"]), C.e("h2", {}, [workflow.title]), C.e("p", {}, [workflow.description]), C.e("span", {class: "card-link"}, ["OPEN WORKFLOW __________________ ↗"])]))
+    number = number + 1
+  }
+  return C.e("div", {}, [C.heading("CAPABILITIES / 02", "Workflows.", "Focused tools. Direct access. Choose your operation."), C.e("section", {class: "workflow-grid", "aria-label": "Available workflows"}, cards)])
+}
+C.mount(Workflows)

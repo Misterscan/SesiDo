@@ -1,0 +1,178 @@
+/** Multi-page SesiDo HTTP server. Start from the repository root with `npm run web:start`. */
+allow "std/api" in as API
+allow "backend" in as Backend
+allow "runs" in as Runs
+allow "catalog" in as Catalog
+allow "platform" in as Platform
+allow "storage" in as Storage
+allow "artifacts" in as Artifacts
+
+let port = 8080
+if len(args) > 0 { port = num(args[0]) }
+if port == null || port < 1024 || port > 65535 { raise_error("InvalidPort", "Use a port from 1024 through 65535.") }
+let origin = "http://localhost:" + str(port)
+let token = Platform.identifier()
+Backend.initialize()
+let statePath = "SesiDo/database/web"
+if $SESIDO_WEB_STATE != null && $SESIDO_WEB_STATE != "" { statePath = $SESIDO_WEB_STATE }
+Runs.initialize(Backend.adapter(), statePath)
+Artifacts.initialize(Backend.artifactRoot())
+let settingsPath = statePath + "/settings.json"
+if exists(settingsPath) {
+  let settings = Storage.read(settingsPath)
+  for item in settings.aliases { Backend.configure(item.alias, item.providerModel) }
+}
+
+let app = API.create_app({title: "SesiDo Workstation API", version: "1.0.0", description: "Local agent runs, browser approvals, sessions, workflows, and artifacts. Supply the per-launch token using Authorization: Bearer <token>."})
+
+/** Reject untrusted origins and require the per-launch token on workspace APIs. */
+fn protect(req) {
+  let host = req.headers.host
+  if !includes(["localhost:" + str(port), "127.0.0.1:" + str(port)], host) { return {status: 403, body: {error: "Untrusted host."}} }
+  let requestOrigin = req.headers.origin
+  if requestOrigin != null && requestOrigin != origin && requestOrigin != "http://127.0.0.1:" + str(port) { return {status: 403, body: {error: "Cross-origin requests are not allowed."}} }
+  if req.headers["sec-fetch-site"] == "cross-site" { return {status: 403, body: {error: "Cross-site requests are not allowed."}} }
+  if starts_with(req.path, "/api/") && req.headers.authorization != "Bearer " + token { return {status: 401, body: {error: "Connect using the access token printed by the server."}} }
+  return null
+}
+app.use(protect)
+
+fn response(body) { return {status: 200, body: body} }
+fn failure(status, message) { return {status: status, body: {error: message}} }
+fn validSession(id) { return type(id) == "string" && regex("^[A-Za-z0-9_-]{1,80}$", id, {mode: "test"}) }
+fn readAsset(path) {
+  let attempts = 0
+  while attempts < 3 {
+    try { return read_file(path) } catch (error) {
+      attempts = attempts + 1
+      if attempts == 3 { raise_error("AssetMissing", "Build the frontend with npm run web:build first.") }
+    }
+  }
+}
+
+fn page(kind, title, item) {
+  let source = readAsset("web/shell.html")
+  source = swap(source, "__PAGE__", kind)
+  source = swap(source, "__TITLE__", title)
+  source = swap(source, "__ITEM__", item)
+  source = swap(source, "__BUNDLE__", kind)
+  return {status: 200, headers: {"Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' data:; frame-src blob: data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"}, body: source}
+}
+fn root(req) { return {status: 302, headers: {Location: "/console"}, body: ""} }
+fn consolePage(req) { return page("console", "Console", "") }
+fn workflowPage(req) {
+  let id = req.params.name
+  let item = Catalog.findWorkflow(id)
+  if item == null { return failure(404, "Workflow not found.") }
+  return page("workflows", item.title, id)
+}
+fn workflowsPage(req) { return page("workflows", "Workflows", "") }
+fn artifactsPage(req) { return page("artifacts", "Artifacts", "") }
+fn artifactPage(req) {
+  if !regex("^[a-f0-9]{64}$", req.params.id, {mode: "test"}) { return failure(404, "Artifact not found.") }
+  return page("artifacts", "Artifact detail", req.params.id)
+}
+fn settingsPage(req) { return page("settings", "Settings", "") }
+fn asset(req) {
+  let name = req.params.name
+  if !includes(["console.js", "workflows.js", "artifacts.js", "settings.js", "cyber.css"], name) { return failure(404, "Asset not found.") }
+  let path = "web/ui/" + name
+  let contentType = "text/javascript; charset=utf-8"
+  if name == "cyber.css" { path = "web/cyber.css"; contentType = "text/css; charset=utf-8" }
+  return {status: 200, headers: {"Content-Type": contentType, "Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff"}, body: readAsset(path)}
+}
+app.get("/", root)
+app.get("/console", consolePage)
+app.get("/workflows", workflowsPage)
+app.get("/workflows/{name}", workflowPage)
+app.get("/artifacts", artifactsPage)
+app.get("/artifacts/{id}", artifactPage)
+app.get("/settings", settingsPage)
+app.get("/assets/{name}", asset)
+
+/** Report server readiness without invoking an AI provider. */
+fn health(req) { return response({ok: true, service: "SesiDo", activeRun: Runs.active()}) }
+/** Read model aliases and provider-key availability. Secret values are never returned. */
+fn configuration(req) { return response(Backend.configuration()) }
+/** Change model identifiers while the engine is idle. Overrides survive restarts. */
+fn configure(req) {
+  if Runs.busy() { return failure(409, "Stop or complete the active run before changing models.") }
+  try {
+    Backend.configure(req.json.alias, req.json.providerModel)
+    let config = Backend.configuration()
+    Storage.save(settingsPath, {aliases: config.aliases})
+    return response(config)
+  } catch (error) { return failure(422, str(error)) }
+}
+/** List stored conversation sessions without making a model call. */
+fn sessions(req) { return response({sessions: Backend.sessionRecords()}) }
+/** Create a conversation with a safe session ID. */
+fn createSession(req) {
+  if Runs.busy() { return failure(409, "The engine is reserved by an active run.") }
+  if !validSession(req.json.id) { return failure(422, "Use 1–80 letters, numbers, underscores, or hyphens.") }
+  for session in Backend.sessionRecords() { if session.id == req.json.id { return failure(409, "Session already exists.") } }
+  Backend.createSession(req.json.id)
+  return {status: 201, body: {id: req.json.id}}
+}
+/** Read persisted conversation messages. */
+fn messages(req) {
+  if !validSession(req.params.id) { return failure(422, "Invalid session ID.") }
+  return response({messages: Backend.sessionMessages(req.params.id)})
+}
+/** Clear the selected conversation after explicit UI confirmation. */
+fn resetSession(req) {
+  if Runs.busy() { return failure(409, "Stop or complete the active run first.") }
+  if !validSession(req.params.id) || req.json.confirm != true { return failure(422, "Session reset requires confirmation.") }
+  return response({result: Backend.resetSession(req.params.id)})
+}
+/** List workflow descriptions, required inputs, and supported choices. */
+fn workflows(req) { return response({workflows: Catalog.workflows}) }
+/** Reserve an agent or workflow run. No operation executes until advance is called. */
+fn createRun(req) { return Runs.create(req.json) }
+/** Read a run's durable state and ordered progress events. */
+fn getRun(req) {
+  let run = Runs.get(req.params.id)
+  if run == null { return failure(404, "Run not found.") }
+  return response(run)
+}
+/** Return the single active run, if any. */
+fn activeRun(req) { return response({run: Runs.active()}) }
+/** Execute exactly one phase using the client's expected version. */
+fn advanceRun(req) { return Runs.advance(req.params.id, req.json.version) }
+/** Prevent further phases; an executing call may finish. */
+fn stopRun(req) { return Runs.stop(req.params.id) }
+/** Approve or deny the exact pending tool operation. Stale decisions are rejected. */
+fn approval(req) { return Runs.decide(req.params.id, req.params.approval, req.json.approved, req.json.version) }
+/** List files under the configured artifact root. */
+fn artifacts(req) { return response({artifacts: Artifacts.listing()}) }
+/** Read metadata for an opaque artifact ID. */
+fn artifactDetail(req) {
+  let item = Artifacts.detail(req.params.id)
+  if item == null { return failure(404, "Artifact not found.") }
+  return response(item)
+}
+/** Read at most 64 MiB of artifact bytes encoded as base64. */
+fn artifactContent(req) { return Artifacts.content(req.params.id) }
+
+app.get("/api/health", health)
+app.get("/api/config", configuration)
+app.post("/api/config", {body: {alias: "string", providerModel: "string"}}, configure)
+app.get("/api/sessions", sessions)
+app.post("/api/sessions", {body: {id: "string"}}, createSession)
+app.get("/api/sessions/{id}/messages", messages)
+app.post("/api/sessions/{id}/reset", {body: {confirm: "boolean"}}, resetSession)
+app.get("/api/workflows", workflows)
+app.get("/api/runs/active", activeRun)
+app.post("/api/runs", {body: {kind: "string", sessionId: "string", "model": "string", maxSteps: "number"}}, createRun)
+app.get("/api/runs/{id}", getRun)
+app.post("/api/runs/{id}/advance", {body: {version: "number"}}, advanceRun)
+app.post("/api/runs/{id}/stop", {body: {}}, stopRun)
+app.post("/api/runs/{id}/approvals/{approval}", {body: {version: "number", approved: "boolean"}}, approval)
+app.get("/api/artifacts", artifacts)
+app.get("/api/artifacts/{id}", artifactDetail)
+app.get("/api/artifacts/{id}/content", artifactContent)
+
+app.listen(port, {cors: false})
+let launchUrl = origin + "/console#token=" + token
+show launchUrl
+show "Keep this local access token private. Ctrl+C stops the server."
