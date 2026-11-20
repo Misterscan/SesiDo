@@ -97,6 +97,24 @@ The interactive chat application starts from `main.sesi` (which imports the modu
   - `readme-banner.sesi`: Generate professional README.md SVG banners.
   - `timestamp.sesi`: Get readable timestamps ready for scripts and filenames.
 
+### Optional image input in chat
+
+In the main interactive chat loop, you can attach an image to a message by entering this at the `[You]:` prompt:
+
+```text
+--image <filename> --prompt <message>
+```
+
+For example:
+
+```text
+--image screenshot.png --prompt Describe this screenshot and suggest improvements.
+```
+
+Start the input with `--image`, followed by the image filename or path, then `--prompt` and your message. Enter both values directly, without the angle brackets or surrounding quotes; the message can contain spaces. The chat loop sends the image alongside your message to the reasoning models for that turn, including fallback attempts.
+
+After submitting the message, choose a maximum step count or press Enter for the default of 20. Image input is optional: for a text-only turn, type your message normally without either flag.
+
 ## Sesi Import Usage
 
 To import SesiDo into another project via Sesi install:
@@ -124,8 +142,8 @@ allow "SesiDo/build" in as Config
 
 export let modelNames = Config.sesiDoModels
 export let ogNames = Config.ogNames
-export let defaultModel = Config.sesiDoModels[9]
-export let defaultOgName = Config.ogNames[9]
+export let defaultModel = Config.sesiDoModels[10]
+export let defaultOgName = Config.ogNames[10]
 export let reasoningLevel = Config.mediumThink
 export let search = Config.searchGoogle
 export let currentTime = Config.localTime
@@ -146,7 +164,7 @@ export fn settings() {
 
    Current alias: "defaultModel"
    Using model: "defaultOgName"
-   "search" is active
+   Google Search: "search"
    thinking: "reasoningLevel"
    ============================
    "}
@@ -171,18 +189,19 @@ The output of Custom.settings() should look like:
 ```bash
 ====== CURRENT SETTINGS ======
 
-Current Time: 10/12/2026
-- Filenames saved with a timestamp will look like: test-10-12-26-11-54-21-AM.txt
-Available aliases:
- ["SesiDo", "SesiDo-Exp", "SesiDo-Pro", "SesiDo-Lite", "SesiDo-Lite-Power", "SesiDo-Flash", "SesiDo-Image", "SesiDo-Image-Lite", "SesiDo-Video", "SesiDo-GPT", "SesiDo-GPT-Pro", "SesiDo-GPT-Lite", "SesiDo-GPT-Image"]
-Available models:
- ["gemini-3.6-flash", "gemini-3.8-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-nano-banana-2.1", "gemini-3.1-flash-lite-image", "gemini-omni-1.1-flash", "gpt-6.1-sol", "gpt-6-astra", "gpt-6-luna", "gpt-image-2.5-flare"]
+   Current Time: 11/19/2026, 9:31:52 PM
+   - Filenames saved with a timestamp will look like:
+      test-11-19-26-9-31-52-PM.txt
+   Available aliases:
+   [SesiDo, SesiDo-Exp, SesiDo-Pro, SesiDo-Max, SesiDo-Lite, SesiDo-Lite-Power, SesiDo-Flash, SesiDo-Image, SesiDo-Image-Lite, SesiDo-Video, SesiDo-GPT, SesiDo-GPT-Max, SesiDo-GPT-Pro, SesiDo-GPT-Lite, SesiDo-GPT-Image] 
+   Available models:
+   [gemini-4-hydrogen, gemini-3.8-flash, gemini-4-argon, gemini-4-neon, gemini-3.1-flash-lite, gemini-3.5-flash-lite, gemini-3-flash-preview, gemini-nano-banana-2.1, gemini-3.1-flash-lite-image, gemini-omni-1.2-flash, gpt-6.1-terra, gpt-6.2-astra, gpt-6.2-sol, gpt-6-luna, gpt-image-2.6-sunburst]
 
-Current alias: SesiDo
-Using model: gpt-6.1-sol
-search is active
-thinkingLevel: "medium"
-============================
+   Current alias: SesiDo-GPT
+   Using model: gpt-6.1-terra
+   Google Search: true
+   thinking: medium
+   ============================
 ```
 
 Importing SesiDo initializes its artifact directories and model aliases. Generated files are written under `.artifacts/` in the consuming workspace.
@@ -237,19 +256,21 @@ The module registers these aliases from `index.sesi` when it is imported.
 
 | Alias               | Configured model              |
 | ------------------- | ----------------------------- |
-| `SesiDo`            | `gemini-3.6-flash`            |
+| `SesiDo`            | `gemini-4-hydrogen`           |
 | `SesiDo-Exp`        | `gemini-3.8-flash`            |
-| `SesiDo-Pro`        | `gemini-3.1-pro-preview`      |
+| `SesiDo-Pro`        | `gemini-4-argon`              |
+| `SesiDo-Max`        | `gemini-4-neon`               |
 | `SesiDo-Lite`       | `gemini-3.1-flash-lite`       |
 | `SesiDo-Lite-Power` | `gemini-3.5-flash-lite`       |
 | `SesiDo-Flash`      | `gemini-3-flash-preview`      |
 | `SesiDo-Image`      | `gemini-nano-banana-2.1`      |
 | `SesiDo-Image-Lite` | `gemini-3.1-flash-lite-image` |
-| `SesiDo-Video`      | `gemini-omni-1.1-flash`       |
-| `SesiDo-GPT`        | `gpt-6.1-sol`                 |
-| `SesiDo-GPT-Pro`    | `gpt-6-astra`                 |
+| `SesiDo-Video`      | `gemini-omni-1.2-flash`       |
+| `SesiDo-GPT`        | `gpt-6.1-terra`               |
+| `SesiDo-GPT-Max`    | `gpt-6.2-astra`               |
+| `SesiDo-GPT-Pro`    | `gpt-6.2-sol`                 |
 | `SesiDo-GPT-Lite`   | `gpt-6-luna`                  |
-| `SesiDo-GPT-Image`  | `gpt-image-2.5-flare`         |
+| `SesiDo-GPT-Image`  | `gpt-image-2.6-sunburst`      |
 
 Override an alias from a consuming script with `SesiDo.setModel(alias, modelName)`.
 

@@ -1,2 +1,2 @@
 // SesiDo Pixel Art Generation Tool
-allow "../../build/index" in as SesiDo; set_alias("SesiDo-Flash", "gemini-3-flash-preview"); let logTag = "[" + SesiDo.universalTime + "]"; show logTag + " [PIXEL ART] "; SesiDo.drawPixelArt({query: args[0]}); show "[PIXEL ART FINISHED]"
+allow "../../build/index" in as SesiDo; let logTag = "[" + SesiDo.universalTime + "]"; show logTag + " [PIXEL ART] "; SesiDo.drawPixelArt({query: args[0]}); show "[PIXEL ART FINISHED]"

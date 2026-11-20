@@ -422,7 +422,7 @@ show Math.add(3, 4)
 
 | Module       | Common Alias | Description              |
 | ------------ | ------------ | ------------------------ |
-| `std/draw`   | `Draw`       | SVG vector drawing       |
+| `std/draw`   | `Draw`       | SVG/PNG vector drawing   |
 | `std/db`     | `{db_open}`  | Embedded document DB     |
 | `std/audio`  | `Audio`      | Sound synthesis/playback |
 | `std/theory` | `Music`      | Music theory helpers     |
@@ -442,7 +442,7 @@ try {
   let obj  = from_json(data)
   show obj.key
 } catch (err) {
-  show "Error:" err
+  raise_error("JSONError", "An error occured trying to read config.json" + str(err) )
 }
 ```
 
@@ -466,7 +466,7 @@ Draw.pixel_text(24, 24, "Raster: 14px", "white", 2, "sans")
 Draw.pixel_text(24, 52, "Raster: 16px", "white", 16 / 7, "sans")
 ```
 
-Save SVG text with `save_svg` and raster text with `save_png`. See [SVG and Pixels](getting-started/SVG-AND-PIXELS.md#raster-text-sizing-and-layout) for text positioning and helper examples.
+Save SVG text with `save_svg` and raster text with `save_png`.
 
 ### Shapes
 
@@ -591,10 +591,10 @@ let result = model("gemini-3.8-flash") {thinkingLevel: "medium", max_tokens: 500
 
 ```sesi
 // Vision
-let desc = model("gemini-3.8-flash") {images: "photo.png"} {"Describe this image."}
+let desc = model("gemini-4-hydrogen") {images: "photo.png"} {"Describe this image."}
 
 // Audio understanding (use an audio-capable model)
-let transcript = model("gemini-3.6-flash") {audio: "meeting.wav"} {"Transcribe this recording."}
+let transcript = model("gemini-3.8-flash") {audio: "meeting.wav"} {"Transcribe this recording."}
 
 // Base64 audio is also accepted
 let wav = read_file("meeting.wav", "base64")
@@ -624,7 +624,7 @@ Use `tools: ["calculateTax"]` to expose only selected registered tools, or `tool
 ### Image Generation
 
 ```sesi
-let img = image("gemini-3.1-flash-image-lite") {ratio: "16:9", size: "1K"} {"A cyberpunk city at night"}
+let img = image("gemini-nano-banana-2.1") {ratio: "16:9", size: "1K"} {"A cyberpunk city at night"}
 write_image("banner.png", img)
 
 // Both Gemini and OpenAI image routes accept audio context
@@ -871,12 +871,10 @@ Functions: `abs`, `acos`, `acosh`, `asin`, `asinh`, `atan`, `atanh`, `atan2`, `c
 | `python(code, args)` | Run inline Python code (blocked in Safe Mode)       |
 | `js(code, args)`     | Run inline JavaScript code (blocked in Safe Mode)   |
 | `gif(input, output, options?)` | Create an animated GIF with FFmpeg (blocked in Safe Mode) |
-| `video(model) {config} {prompt}` | Generate Base64 video with temporary OpenAI Sora 2 support, Gemini Omni Flash, or Veo |
+| `video(model) {config} {prompt}` | Generate Base64 video with Gemini Omni Flash |
 | `video(input, output, options?)` | Create or transcode video with FFmpeg (blocked in Safe Mode) |
 | `ffmpeg(args, options?)` | Run structured FFmpeg arguments (blocked in Safe Mode) |
 | `html(body, opts)`   | Build a complete HTML document string               |
-
-> ## FOR MORE, PLEASE VISIT "BUILTINS.md" EITHER IN `docs/` OR `node_modules/@misterscan/sesi/docs/`
 
 ---
 
@@ -910,14 +908,13 @@ Return a list with the top 5 trends."}
 // ❌ WRONG — raw newline between elements (outside string literals)
 model("gemini-3.1-flash-lite") {
   "What is the latest in tech? 
-  Return a list with the top 5 trends.
-"
+  Return a list with the top 5 trends."
+}
 
 // ❌ Also WRONG — raw newline between elements (outside string literals) and manual string concatenation
 model("gemini-3.1-flash-lite") {
   "What is the latest in tech?" +
   "Return a list with the top 5 trends."
-}
 }
 ```
 
@@ -1149,4 +1146,3 @@ game.run()
 
 Game scenes use left-handed coordinates: Y is up, `+X` is right, and `+Z` is forward. Relative generated and registered asset paths both resolve from the current working directory.
 
-Read [getting-started/GAME.md](getting-started/GAME.md) for the complete scenes, assets, physics, input, GUI, audio, storage, permissions, and build API.

@@ -1,1 +1,2 @@
+// SesiDo Draw Image Tool
 allow "../../build/index" in as SesiDo; let logTag = "[" + SesiDo.universalTime + "]"; show logTag + " [DRAW IMAGE]"; SesiDo.drawImage({query: args[0]}); show "[DRAW IMAGE FINISHED]"

@@ -1,300 +1,337 @@
 allow "std/draw" in as Draw
 allow "std/math" in as Math
 
-// A deterministic, fine-grained material variation for individual mosaic pixels.
-fn grain(a, b) {
-  let n = Math.sin(a * 127.1 + b * 311.7) * 43758.5453
-  return n - floor(n)
+let width = 1280
+let height = 800
+let sunX = 21
+let sunY = 658
+let sunR = 224
+
+fn hash(x,y) {
+  let h = Math.sin(x*127.1+y*311.7)*43758.5453
+  return h-Math.floor(h)
 }
 
-// Encode a shaded RGB color without relying on external image libraries.
-fn channel(n) {
-  let digits = "0123456789abcdef"
-  n = floor(Math.max(0, Math.min(255, n)))
-  return slice(digits, floor(n / 16), floor(n / 16) + 1) + slice(digits, n % 16, n % 16 + 1)
-}
-fn color(r, g, b) {
-  return "#" + channel(r) + channel(g) + channel(b)
+fn mix(a,b,t) {
+  return [Math.lerp(a[0],b[0],t),Math.lerp(a[1],b[1],t),Math.lerp(a[2],b[2],t)]
 }
 
-// Procedural walnut bookcases: upright partitions, shelves, books and gilt lettering.
-fn bookcase(u, y, seed) {
-  let bay = floor(u / 2.35)
-  let bx = u - bay * 2.35
-  let row = floor((y - 0.38) / 0.86)
-  let ry = y - 0.38 - row * 0.86
-  let timber = 5 * Math.sin(u * 95 + y * 3) + 3 * Math.sin(u * 211)
-  let c = [72 + timber, 39 + timber * 0.65, 24 + timber * 0.35]
-  if y < 0.38 {
-    c = [65 + timber, 33 + timber * 0.6, 20]
-    if y > 0.29 { c = [132, 82, 41] }
-    return c
+fn ink(x,y,c) {
+  Draw.pixel(x,y,Draw.rgb(c[0],c[1],c[2]))
+}
+
+// A split, dusty ribbon of starlight behind the sunlit worlds.
+fn sky(x,y) {
+  let u = x*0.76+y*0.65
+  let v = y*0.76-x*0.65+316
+  let bend = v+37*Math.sin(u/193)-21*Math.sin(u/91)
+  let knot = Draw.noise(u/127,bend/86,14)
+  let lace = Draw.fractal(u/81,bend/44,4,0.55,2.13,33)
+  let lane = Math.exp(-Math.pow((bend+11*Math.sin(u/43))/19,2))*Math.clamp((knot-0.18)*2.3)
+  let haze = Math.exp(-Math.pow(bend/121,2))*(0.24+0.87*knot)*Math.pow(lace,1.6)*(1-0.75*lane)
+  let blue = Math.exp(-Math.pow((bend+62)/167,2))*0.5
+  let c = [4+29*haze,6+36*haze+4*blue,14+52*haze+10*blue]
+  let ix = Math.floor(x/9)
+  let iy = Math.floor(y/9)
+  let seed = hash(ix,iy)
+  if seed > 0.9-0.12*haze {
+    let dx = x-ix*9-2-5*hash(ix+91,iy)
+    let dy = y-iy*9-2-5*hash(ix,iy+71)
+    let q = hash(ix+47,iy-19)
+    let p = Math.exp(-(dx*dx+dy*dy)/(0.26+0.68*q*q))*(27+188*Math.pow(q,4))
+    let tint = hash(ix-37,iy+13)
+    c = [c[0]+p*(0.76+0.27*tint),c[1]+p*0.91,c[2]+p*(1.08-0.31*tint)]
   }
-  if y > 6.42 {
-    c = [92 + timber, 49 + timber * 0.6, 27]
-    if y > 6.51 && y < 6.58 { c = [179, 119, 58] }
-    if y > 6.73 && y < 6.82 { c = [151, 94, 43] }
-    return c
-  }
-  if bx < 0.115 || bx > 2.255 {
-    c = [104 + timber, 58 + timber * 0.6, 31]
-    if bx > 0.035 && bx < 0.052 { c = [171, 111, 55] }
-    if bx > 2.29 && bx < 2.31 { c = [48, 25, 17] }
-    return c
-  }
-  if ry < 0.075 {
-    c = [113 + timber, 66 + timber * 0.6, 35]
-    if ry < 0.017 { c = [177, 119, 65] }
-    if ry > 0.055 { c = [42, 23, 16] }
-    return c
-  }
-  c = [30, 23, 20]
-  let slot = floor((bx - 0.12) / 0.137)
-  let sx = (bx - 0.12) / 0.137 - slot
-  let key = bay * 43 + slot + seed * 97
-  let h = 0.43 + grain(key, row + 13) * 0.30
-  let gap = grain(key, row + 83)
-  if gap > 0.965 { return c }
-  if ry > 0.095 && ry < h && sx > 0.055 && sx < 0.94 {
-    let palette = [[106, 42, 36], [36, 73, 65], [38, 57, 79], [133, 88, 46], [94, 64, 68], [161, 132, 84], [66, 76, 43], [62, 36, 32], [175, 151, 107], [47, 75, 83]]
-    let p = palette[floor(grain(key + 3, row + 2) * len(palette))]
-    let shade = 0.82 + 0.18 * Math.sin(sx * Math.PI)
-    c = [p[0] * shade, p[1] * shade, p[2] * shade]
-    if sx < 0.12 { c = [p[0] * 0.55, p[1] * 0.55, p[2] * 0.55] }
-    let band = ry / h
-    if (band > 0.19 && band < 0.208) || (band > 0.82 && band < 0.84) {
-      c = [186, 151, 88]
-    }
-    if sx > 0.26 && sx < 0.77 && band > 0.51 && band < 0.69 {
-      let line = floor(ry * 132)
-      if line % 4 == 0 && grain(key, line) > 0.28 { c = [194, 169, 111] }
-    }
+  let dust = hash(x+101,y+78)
+  if dust > 0.995 { c = [c[0]+10+46*haze,c[1]+14+53*haze,c[2]+24+59*haze] }
+  let grain = (hash(x-6,y+17)-0.5)*2.5
+  return [c[0]+grain,c[1]+grain,c[2]+grain]
+}
+
+// Arched prominences rising from the photosphere.
+fn prominence(a,h,center,half,peak) {
+  let t = (a-center)/half
+  if Math.abs(t) >= 1 { return 0 }
+  let arch = peak*Math.pow(Math.cos(t*1.570796),1.15)
+  let d = h-arch
+  let threads = Math.exp(-Math.abs(d)/1.6)+0.38*Math.exp(-Math.abs(d+5+3*Math.sin(t*13))/2.1)
+  return threads*(0.58+0.42*Math.pow(Math.sin(t*16+h*0.15),2))
+}
+
+fn space(x,y) {
+  let c = sky(x,y)
+  let dx = x-sunX
+  let dy = y-sunY
+  let d = Math.sqrt(dx*dx+dy*dy)
+  let h = d-sunR
+  if h > 400 { return c }
+  let a = Math.atan2(dy,dx)
+  let edge = Math.clamp(0.5-h)
+  let k = Math.max(0,h)
+  let flow = Draw.noise(a*15+0.35*Math.sin(k/33+a*4),k/102,80)
+  let ray = Draw.noise(a*63+0.19*Math.sin(k/25+a*9),k/149,93)
+  let streamer = Math.pow(0.21+flow*0.9,3)*Math.exp(-k/(29+76*flow))*(0.48+ray*0.82)
+  let bloom = Math.exp(-k/84)
+  let rim = Math.exp(-k/4.4)
+  let loop = prominence(a,k,-1.06,0.15,41)+prominence(a,k,-0.39,0.096,25)+0.7*prominence(a,k,0.31,0.12,29)
+  c = [c[0]+80*bloom+203*streamer+103*rim+184*loop,c[1]+28*bloom+115*streamer+80*rim+83*loop,c[2]+10*bloom+44*streamer+34*rim+27*loop]
+  if edge > 0 {
+    let sx = dx/sunR
+    let sy = dy/sunR
+    let z = Math.sqrt(Math.max(0,1-sx*sx-sy*sy))
+    let lon = Math.atan2(sx,z)
+    let lat = Math.asin(Math.clamp(sy,-1,1))
+    let roll = Draw.fractal(lon*5,lat*6,4,0.56,2,20)
+    let cells = Draw.noise(lon*89+roll*5,lat*89,42)
+    let mesh = Draw.fractal(lon*27+roll*7,lat*26+roll*8,4,0.59,2.06,63)
+    let heat = Math.clamp(0.15+0.56*roll+0.46*mesh+0.24*cells-0.22*Math.pow(1-z,2))
+    let spot = Math.exp(-Math.pow((lon-0.48)/0.105,2)-Math.pow((lat+0.31)/0.057,2))
+    spot = spot*Math.clamp((mesh-0.28)*2.6)
+    let ball = [255-51*spot,95+149*heat-105*spot,24+165*Math.pow(heat,1.6)-25*spot]
+    let lip = 0.79*Math.exp(-Math.abs(h)/1.65)
+    ball = mix(ball,[255,231,164],lip)
+    c = mix(c,ball,edge)
   }
   return c
 }
 
-// Perspective projection shared by the furniture and small reading-room details.
-fn project(x, y, z) {
-  return [512 + 780 * x / (z + 7), 425 - 780 * (y - 3.2) / (z + 7)]
+// Soft diffraction on the few brightest field stars.
+fn flare(cx,cy,r,warm) {
+  let y = cy-r
+  while y <= cy+r {
+    let x = cx-r
+    while x <= cx+r {
+      let u = Math.abs(x-cx)
+      let v = Math.abs(y-cy)
+      let d = Math.sqrt(u*u+v*v)
+      if d <= r {
+        let f = Math.pow(1-d/r,2)*Math.exp(-Math.min(u,v)*2.9)*0.42+0.83*Math.exp(-d*d/3.6)+0.11*Math.exp(-d/3.2)
+        let c = mix(space(x,y),[197+56*warm,224+17*warm,255-49*warm],Math.clamp(f))
+        ink(x,y,c)
+      }
+      x = x+1
+    }
+    y = y+1
+  }
 }
-fn face(points, fill) {
-  let screen = []
-  for p in points { push(screen, project(p[0], p[1], p[2])) }
-  Draw.pixel_polygon(screen, fill)
+
+fn oval(x,y,cx,cy,rx,ry,tilt) {
+  let v = (y-cy)/ry
+  let u = (x-cx-(y-cy)*tilt)/rx
+  return 1-u*u-v*v
+}
+
+// Each texture is evaluated on the visible hemisphere, not on a flat disk.
+fn surface(id,x,y,z) {
+  let tx = x*0.97+y*0.243
+  let ty = y*0.97-x*0.243
+  let u = Math.atan2(tx,z)
+  let v = Math.asin(Math.clamp(ty,-1,1))
+  let n = Draw.fractal(u*5.2,v*5.2,4,0.53,2.1,28+id*13)
+  let fine = Draw.noise(u*47,v*47,60+id)
+  let c = [160,151,145]
+  if id == 1 || id == 4 || id == 9 {
+    let lo = [85,76,74]
+    let hi = [197,182,165]
+    if id == 4 {
+      lo = [102,46,32]
+      hi = [224,140,91]
+    }
+    if id == 9 {
+      lo = [63,69,87]
+      hi = [203,202,190]
+    }
+    let maria = Draw.noise(u*2.5,v*3.4,83+id)
+    let relief = 0
+    let craters = [[-0.56,-0.31,0.16],[-0.32,0.4,0.095],[0.16,-0.58,0.13],[0.35,0.14,0.19],[-0.02,0.09,0.071],[0.63,0.44,0.11],[-0.65,0.32,0.061],[0.22,0.53,0.09]]
+    for crater in craters {
+      let a = (u-crater[0])/crater[2]
+      let b = (v-crater[1])/crater[2]
+      let d = Math.sqrt(a*a+b*b)
+      if d < 1.63 {
+        relief = relief+0.26*Math.exp(-Math.pow((d-1)/0.16,2))*(0.24+0.6*a-0.47*b)-0.14*Math.exp(-d*d*2.4)
+      }
+    }
+    let t = Math.clamp(0.03+0.58*n+0.24*fine+0.26*maria+relief)
+    c = mix(lo,hi,t)
+    if id == 4 {
+      let ice = Math.clamp((Math.abs(v)+0.16*n-1.18)*6)
+      c = mix(c,[241,216,194],ice*0.9)
+    }
+  }
+  if id == 2 {
+    let wind = Draw.fractal(u*2.7+v*2,v*7,5,0.54,2,101)
+    let stripe = 0.5+0.5*Math.sin(v*18+u*1.1+wind*4)
+    c = mix([166,121,79],[253,224,173],Math.clamp(0.16+0.57*wind+0.18*stripe+0.12*fine))
+  }
+  if id == 3 {
+    let land = oval(u,v,-0.49,-0.31,0.43,0.26,0.33)
+    land = Math.max(land,oval(u,v,-0.3,-0.04,0.11,0.20,0.55))
+    land = Math.max(land,oval(u,v,-0.08,0.30,0.22,0.40,-0.39))
+    land = Math.max(land,oval(u,v,0.80,-0.33,0.48,0.22,0.26))
+    land = Math.max(land,oval(u,v,0.60,0.06,0.23,0.34,-0.31))
+    let coast = land+(n-0.51)*2.4+(fine-0.5)*0.30
+    let sea = mix([12,42,101],[35,123,170],Math.clamp(0.29+0.61*n+0.43*Math.exp(-Math.abs(coast)*9)))
+    let dry = Math.clamp(0.13+0.75*Draw.noise(u*3.3,v*2.6,52)+0.24*Math.sin(v*9))
+    let ground = mix([47,83,55],[194,151,94],dry)
+    c = mix(sea,ground,Math.clamp(coast*8+0.22))
+    let drift = Draw.noise(u*3.3,v*3.7,74)
+    let wisps = Draw.fractal(u*6+drift*3,v*13+u*2+drift*3,5,0.56,2.07,106)
+    let clouds = Math.pow(Math.clamp((wisps-0.45)*3.3),1.28)
+    let polar = Math.clamp((Math.abs(v)+0.12*n-1.00)*6)*0.88
+    c = mix(c,[230,241,246],Math.max(clouds,polar))
+  }
+  if id == 5 || id == 6 {
+    let jet = Draw.fractal(u*4.1,v*12.5,4,0.56,2.05,171+id)
+    let curl = Draw.noise(u*5.5,v*9,111)
+    let eu = (u+0.28)/0.31
+    let ev = (v-0.24+0.08*(u+0.28))/0.132
+    let storm = Math.sqrt(eu*eu+ev*ev)
+    let lat = v+0.034*(jet-0.5)+0.016*Math.sin(u*8+curl*5)
+    if id == 5 {
+      lat = lat+0.092*Math.exp(-storm*storm*0.68)
+      let belt = 0.5+0.5*Math.sin(lat*30+0.81*Math.sin(lat*13)+0.19*Math.sin(lat*92))
+      let filament = Math.sin(lat*172+jet*6+0.7*Math.sin(u*17+v*7))
+      let t = Math.clamp(0.12+0.64*Math.pow(belt,0.77)+0.27*jet+0.066*filament)
+      c = mix([120,68,49],[246,222,185],t)
+      c = mix(c,[98,124,131],Math.clamp((-0.36-lat)*0.69)*0.47)
+      let spiral = 0.5+0.5*Math.sin(storm*17+1.2*Math.atan2(ev,eu)+jet*3)
+      let eye = mix([149,61,42],[236,151,105],0.26+0.55*spiral+0.13*n)
+      c = mix(c,eye,Math.clamp((1.12-storm)*7)*0.87)
+      c = mix(c,[248,212,167],0.36*Math.exp(-Math.pow((storm-1.13)*11,2)))
+    } else {
+      let bands = 0.5+0.5*Math.sin(lat*25+0.65*Math.sin(lat*57))
+      c = mix([151,116,84],[248,222,176],Math.clamp(0.34+0.37*bands+0.29*jet+0.045*Math.sin(lat*181)))
+      c = mix(c,[152,163,147],Math.clamp((-v-0.48)*0.83)*0.74)
+    }
+  }
+  if id == 7 {
+    let w = v+0.018*Math.sin(u*5+n*3)
+    c = mix([71,144,150],[175,222,214],0.45+0.16*Math.sin(w*12)+0.24*n+0.15*Math.clamp(-v))
+  }
+  if id == 8 {
+    let w = v+0.045*Math.sin(u*4+n*2.4)
+    let dark = Math.exp(-Math.pow((u+0.36)/0.24,2)-Math.pow((v+0.18)/0.12,2))
+    let blue = Math.clamp(0.43+0.17*Math.sin(w*18)+0.37*n-0.27*dark)
+    let frost = 0.29*Math.exp(-Math.pow((w-0.36)*16,2))*Math.clamp((fine-0.24)*1.6)
+    c = mix(mix([37,61,141],[102,165,222],blue),[187,218,241],frost)
+  }
+  return c
+}
+
+// Shade the globe and project Saturn's annulus through the same image plane.
+fn world(cx,cy,r,id,depth) {
+  let lx = sunX-cx
+  let ly = sunY-cy
+  let lens = Math.sqrt(lx*lx+ly*ly)
+  lx = lx/lens
+  ly = ly/lens
+  let side = Math.sqrt(1-depth*depth)
+  lx = lx*side
+  ly = ly*side
+  let extX = r+8
+  let extY = r+8
+  if id == 6 {
+    extX = r*2.4+2
+    extY = r*1.2+2
+  }
+  let y = Math.max(0,Math.floor(cy-extY))
+  while y <= Math.min(height-1,cy+extY) {
+    let x = Math.max(0,Math.floor(cx-extX))
+    while x <= Math.min(width-1,cx+extX) {
+      let a = (x-cx)/r
+      let b = (y-cy)/r
+      let q = a*a+b*b
+      let d = Math.sqrt(q)
+      let z = Math.sqrt(Math.max(0,1-q))
+      let cov = Math.clamp((1-d)*r+0.5)
+      let ru = a*0.942-b*0.336
+      let rv = a*0.336+b*0.942
+      let rr = Math.sqrt(ru*ru+rv*rv/(0.385*0.385))
+      let rz = rv*2.397
+      let ring = 0
+      if id == 6 && rr > 1.26 && rr < 2.39 { ring = 1 }
+      let air = 0
+      if id >= 2 && id <= 8 && id != 4 && d < 1.13 {
+        air = Math.exp(-Math.abs(d-1)*r/1.75)*Math.clamp((a*lx+b*ly+0.14)*1.4)
+      }
+      if cov > 0 || ring > 0 || air > 0.009 {
+        let c = [0,0,0]
+        if cov < 1 { c = space(x,y) }
+        if cov > 0 {
+          let base = surface(id,a,b,z)
+          let ndl = a*lx+b*ly+z*depth
+          let lit = 0.055+0.97*Math.pow(Math.clamp((ndl+0.048)/1.048),0.66)
+          if id == 6 {
+            let plane = 0.336*a+0.942*b-z/2.397
+            let slope = 0.336*lx+0.942*ly-depth/2.397
+            if Math.abs(slope) > 0.001 {
+              let t = -plane/slope
+              let su = (a+t*lx)*0.942-(b+t*ly)*0.336
+              let sv = (a+t*lx)*0.336+(b+t*ly)*0.942
+              let sr = Math.sqrt(su*su+sv*sv/(0.385*0.385))
+              if t > 0 && sr > 1.34 && sr < 2.31 {
+                let shade = Math.clamp(Math.min(sr-1.34,2.31-sr)*33)*0.57
+                shade = shade*(1-0.74*Math.exp(-Math.pow((sr-1.96)/0.032,2)))
+                lit = lit*(1-shade)
+              }
+            }
+          }
+          let rim = air*0.72
+          let tint = [159,193,209]
+          if id == 3 { tint = [67,172,255] }
+          if id == 2 || id == 5 || id == 6 { tint = [246,197,142] }
+          let ball = [base[0]*lit+rim*tint[0]*0.43,base[1]*lit+rim*tint[1]*0.51,base[2]*lit+rim*tint[2]*0.76+2]
+          c = mix(c,ball,cov)
+        }
+        let mist = air*(1-cov)
+        c = [c[0]+mist*20,c[1]+mist*39,c[2]+mist*55]
+        if ring > 0 && (cov < 1 || rz > z) {
+          let band = Draw.noise(rr*43,12,161)*0.28+0.12*Math.sin(rr*231)+0.085*Math.sin(rr*460)
+          let main = Math.exp(-Math.pow((rr-1.71)/0.26,2))
+          let division = Math.exp(-Math.pow((rr-1.963)/0.029,2))+0.54*Math.exp(-Math.pow((rr-2.244)/0.014,2))
+          let edge = Math.clamp(Math.min(rr-1.26,2.39-rr)*57)
+          let opacity = Math.clamp((0.42+0.45*main+band)*(1-0.94*division))*edge
+          let ringC = mix([120,111,104],[240,211,165],Math.clamp(0.33+0.52*main+band))
+          let along = a*lx+b*ly+rz*depth
+          let closest = rr*rr-along*along
+          let shade = 1
+          if along < 0 { shade = 0.15+0.85*Math.clamp((closest-0.91)*6) }
+          c = mix(c,[ringC[0]*shade,ringC[1]*shade,ringC[2]*shade+2],opacity)
+        }
+        ink(x,y,c)
+      }
+      x = x+1
+    }
+    y = y+1
+  }
 }
 
 Draw.clear()
-
-// Every output pixel is calculated independently; there are no tile bevels or grid lines.
-let py = 0
-while py < 1024 {
-  let dy = (425 - py) / 780
-  let px = 0
-  while px < 1024 {
-    let dx = (px - 512) / 780
-    let t = 29
-    let surface = 0
-    let wallSide = 1
-    if dx != 0 {
-      let sideT = 5.3 / Math.abs(dx)
-      if sideT < t {
-        t = sideT
-        surface = 1
-        if dx < 0 { wallSide = -1 }
-      }
-    }
-    if dy < 0 {
-      let floorT = -3.2 / dy
-      if floorT < t { t = floorT; surface = 2 }
-    }
-    if dy > 0 {
-      let ceilingT = 4.2 / dy
-      if ceilingT < t { t = ceilingT; surface = 3 }
-    }
-    let x = dx * t
-    let y = 3.2 + dy * t
-    let z = t - 7
-    let c = [100, 65, 40]
-
-    if surface == 1 {
-      c = bookcase(z + 18.8, y, wallSide + 5)
-      if y > 6.85 {
-        c = [155, 128, 88]
-        if y > 7.12 { c = [93, 61, 36] }
-      }
-    }
-
-    if surface == 0 {
-      c = bookcase(x + 7.05, y, 19)
-      let ax = Math.abs(x)
-      // A tall, round-headed window set into a limestone arch.
-      let outerArch = false
-      let innerArch = false
-      if ax < 2.10 && y > 1.10 && y < 4.95 { outerArch = true }
-      if x * x + (y - 4.95) * (y - 4.95) < 2.10 * 2.10 && y >= 4.95 { outerArch = true }
-      if ax < 1.72 && y > 1.48 && y < 4.95 { innerArch = true }
-      if x * x + (y - 4.95) * (y - 4.95) < 1.72 * 1.72 && y >= 4.95 { innerArch = true }
-      if outerArch {
-        let stone = grain(floor(x * 9), floor(y * 8))
-        c = [177 + stone * 19, 153 + stone * 15, 111 + stone * 13]
-        if ax > 1.95 { c = [113, 82, 48] }
-      }
-      if innerArch {
-        let glow = 1 - ax / 2.5
-        c = [211 + glow * 26, 211 + glow * 23, 175 + glow * 35]
-        let tree = Math.sin(x * 23) * 0.18 + Math.sin(x * 61) * 0.05
-        if y < 2.23 + tree { c = [130, 153, 126] }
-        if y < 1.83 + tree { c = [103, 129, 110] }
-        if Math.abs(x) < 0.052 || Math.abs(ax - 0.85) < 0.034 { c = [89, 66, 39] }
-        if Math.abs(y - 3.18) < 0.042 || Math.abs(y - 4.92) < 0.045 { c = [95, 72, 42] }
-        if y > 4.95 {
-          let angle = Math.atan2(y - 4.95, x)
-          let spoke = Math.sin(angle * 6)
-          if Math.abs(spoke) < 0.045 { c = [105, 79, 43] }
-          let rad = Math.sqrt(x * x + (y - 4.95) * (y - 4.95))
-          if Math.abs(rad - 0.86) < 0.032 { c = [106, 79, 44] }
-        }
-      }
-      if ax < 2.2 && y > 1.28 && y < 1.43 { c = [191, 158, 102] }
-      if y < 0.36 { c = [68, 40, 25] }
-    }
-
-    if surface == 2 {
-      let plank = floor((x + 10.6) / 0.52)
-      let longitudinal = z + (plank % 2) * 1.3
-      let end = longitudinal / 2.6 - floor(longitudinal / 2.6)
-      let across = (x + 10.6) / 0.52 - plank
-      let wood = grain(plank, floor(longitudinal / 2.6))
-      let streak = Math.sin(x * 138 + Math.sin(z * 0.7) * 3) * 4
-      c = [132 + wood * 34 + streak, 88 + wood * 27 + streak, 48 + wood * 18 + streak * 0.5]
-      if across < 0.018 || end < 0.008 { c = [70, 46, 29] }
-      // A narrow patterned red runner keeps the central aisle readable.
-      if Math.abs(x) < 1.03 {
-        let border = Math.abs(x)
-        let motif = Math.sin(x * 21 + z * 6) * Math.sin(z * 7 - x * 10)
-        c = [91 + motif * 12, 34 + motif * 5, 32 + motif * 4]
-        if border > 0.88 { c = [172, 132, 74] }
-        if border > 0.94 { c = [80, 40, 29] }
-        if border > 0.98 { c = [177, 137, 81] }
-        if border < 0.79 && motif > 0.76 { c = [157, 103, 65] }
-        if Math.abs(Math.sin(z * 2.3)) < 0.045 && border < 0.78 { c = [131, 77, 52] }
-      }
-      let windowLight = Math.exp(-x * x / 6 - (z - 15) * (z - 15) / 95)
-      c = [c[0] + windowLight * 34, c[1] + windowLight * 27, c[2] + windowLight * 14]
-    }
-
-    if surface == 3 {
-      let beam = (z + 14.1) / 3.7
-      let f = beam - floor(beam)
-      c = [124, 101, 72]
-      let coff = Math.abs(x) / 1.77
-      let cf = coff - floor(coff)
-      if f < 0.075 || cf < 0.055 { c = [59, 37, 24] }
-      else if f < 0.10 || cf < 0.075 { c = [171, 121, 59] }
-      else {
-        let inset = Math.sin(f * Math.PI) * Math.sin(cf * Math.PI)
-        c = [119 + inset * 30, 94 + inset * 28, 63 + inset * 23]
-      }
-    }
-
-    // Ray-intersect the two continuous walnut reading tables.
-    if dy < 0 {
-      let tt = (1.36 - 3.2) / dy
-      let tx = dx * tt
-      let tz = tt - 7
-      if tt < t && Math.abs(tx) > 1.42 && Math.abs(tx) < 3.88 && tz > -1.5 && tz < 13.8 {
-        let streak = Math.sin(tx * 125 + Math.sin(tz * 1.5)) * 4 + Math.sin(tx * 41) * 5
-        c = [103 + streak, 58 + streak * 0.7, 31 + streak * 0.35]
-        if Math.abs(tx) < 1.49 || Math.abs(tx) > 3.80 || tz < -1.40 || tz > 13.68 { c = [167, 113, 57] }
-        if Math.abs(tx) > 1.66 && Math.abs(tx) < 3.57 {
-          let desk = (tz + 1.5) / 3.6
-          let df = desk - floor(desk)
-          if df > 0.20 && df < 0.77 { c = [47 + streak * 0.3, 66 + streak * 0.4, 49 + streak * 0.25] }
-        }
-        t = tt
-      }
-    }
-
-    let depth = Math.min(1, t / 34)
-    let illumination = 0.76 + depth * 0.20
-    if surface == 1 { illumination = 0.69 + depth * 0.27 }
-    if surface == 3 { illumination = 0.76 }
-    let fleck = (grain(px + 77, py + 31) - 0.5) * 9
-    let vignette = 1 - 0.10 * Math.pow(Math.abs(px - 512) / 724, 2)
-    Draw.pixel(px, py, color((c[0] * illumination + fleck) * vignette, (c[1] * illumination + fleck) * vignette, (c[2] * illumination + fleck) * vignette))
-    px = px + 1
+let y = 0
+while y < height {
+  let x = 0
+  while x < width {
+    ink(x,y,space(x,y))
+    x = x+1
   }
-  py = py + 1
+  y = y+1
 }
+flare(156,161,16,0.12)
+flare(529,118,10,0.9)
+flare(799,197,11,0.32)
+flare(1062,78,8,0.37)
+flare(1202,465,13,0.08)
+flare(881,689,8,0.68)
+flare(350,671,7,0.55)
 
-// Small geometric book volumes, with flat, unbeveled raster faces.
-fn book(x, z, w, d, base, thick, cover) {
-  face([[x, base, z], [x + w, base, z], [x + w, base + thick, z], [x, base + thick, z]], "#d4c29a")
-  face([[x + w, base, z], [x + w, base, z + d], [x + w, base + thick, z + d], [x + w, base + thick, z]], "#ab9673")
-  face([[x, base + thick, z], [x + w, base + thick, z], [x + w, base + thick, z + d], [x, base + thick, z + d]], cover)
-  let a = project(x + 0.06, base + thick + 0.002, z + 0.07)
-  let b = project(x + w - 0.06, base + thick + 0.002, z + 0.07)
-  Draw.pixel_line(a[0], a[1], b[0], b[1], "#b69b65")
-}
-
-// Brass banker lamps with dark green glass shades, drawn far to near.
-fn lamp(x, z) {
-  let k = 780 / (z + 7)
-  let foot = project(x, 1.385, z)
-  Draw.pixel_ellipse(foot[0] + k * 0.09, foot[1] + k * 0.025, k * 0.30, k * 0.08, "#332b20")
-  Draw.pixel_ellipse(foot[0], foot[1], k * 0.23, k * 0.075, "#72562a")
-  Draw.pixel_ellipse(foot[0], foot[1] - k * 0.018, k * 0.19, k * 0.052, "#c9a456")
-  let top = project(x, 2.10, z)
-  Draw.pixel_rect(top[0] - k * 0.023, top[1], k * 0.046, foot[1] - top[1], "#967535")
-  Draw.pixel_rect(top[0] - k * 0.010, top[1], k * 0.010, foot[1] - top[1], "#e2bf6e")
-  let shade = project(x, 2.14, z)
-  Draw.pixel_ellipse(shade[0], shade[1] + k * 0.075, k * 0.39, k * 0.105, "#ead799")
-  Draw.pixel_ellipse(shade[0], shade[1] - k * 0.025, k * 0.42, k * 0.18, "#143f32")
-  Draw.pixel_rect(shade[0] - k * 0.42, shade[1] - k * 0.025, k * 0.84, k * 0.095, "#1c513c")
-  Draw.pixel_ellipse(shade[0] - k * 0.07, shade[1] - k * 0.075, k * 0.29, k * 0.075, "#2d7051")
-  Draw.pixel_line(shade[0] - k * 0.34, shade[1] + k * 0.07, shade[0] + k * 0.34, shade[1] + k * 0.07, "#baa467")
-  Draw.pixel_line(shade[0] + k * 0.29, shade[1] + k * 0.08, shade[0] + k * 0.29, shade[1] + k * 0.30, "#bf9a50")
-  Draw.pixel_circle(shade[0] + k * 0.29, shade[1] + k * 0.31, Math.max(1, k * 0.023), "#d4b06b")
-}
-
-// Table aprons and sturdy foreground legs.
-for side in [-1, 1] {
-  let nearX = side * 1.42
-  let farX = side * 3.88
-  face([[nearX, 1.36, -1.5], [farX, 1.36, -1.5], [farX, 1.15, -1.5], [nearX, 1.15, -1.5]], "#57301d")
-  face([[nearX, 1.36, -1.5], [nearX, 1.36, 13.8], [nearX, 1.17, 13.8], [nearX, 1.17, -1.5]], "#633b23")
-  face([[side * 1.56, 1.17, -1.28], [side * 1.76, 1.17, -1.28], [side * 1.76, 0, -1.28], [side * 1.56, 0, -1.28]], "#4c2c1c")
-}
-
-for z in [11.5, 7.7, 3.9, 0.1] {
-  for side in [-1, 1] {
-    let x = side * 2.68
-    let bx = x - 0.43
-    book(bx, z + 0.24, 0.67, 0.85, 1.37, 0.075, "#6d3430")
-    book(bx + 0.08, z + 0.21, 0.60, 0.74, 1.445, 0.065, "#334857")
-    lamp(x + side * 0.18, z + 1.1)
-    // An open ivory book on the green writing surface.
-    let ox = x - 0.48
-    face([[ox, 1.375, z - 0.66], [ox + 0.46, 1.40, z - 0.61], [ox + 0.46, 1.40, z + 0.03], [ox, 1.375, z - 0.02]], "#e7d7ae")
-    face([[ox + 0.46, 1.40, z - 0.61], [ox + 0.93, 1.375, z - 0.66], [ox + 0.93, 1.375, z - 0.02], [ox + 0.46, 1.40, z + 0.03]], "#d7c69e")
-    let line = 0
-    while line < 7 {
-      let zz = z - 0.52 + line * 0.065
-      let a = project(ox + 0.07, 1.391, zz)
-      let b = project(ox + 0.38, 1.408, zz + 0.025)
-      let c = project(ox + 0.54, 1.408, zz + 0.025)
-      let d = project(ox + 0.85, 1.391, zz)
-      Draw.pixel_line(a[0], a[1], b[0], b[1], "#a89a7e")
-      Draw.pixel_line(c[0], c[1], d[0], d[1], "#a4977c")
-      line = line + 1
-    }
-  }
-}
-
-// Save the opaque 1024 by 1024 raster mosaic.
-try {
-  make_dir("generated_images/gpt-6.1-sol")
-  Draw.save_png("generated_images/gpt-6.1-sol/A_1024x1024_pixel_by_pixel_mosaic_of_a_library_interior_1024x1024_0.png", 1024, 1024, "#241c16")
-} catch (err) {
-  show "Could not save the library image:" err
-}
+world(1175,122,45,8,0.64)
+world(1115,594,51,7,0.67)
+world(995,302,91,6,0.52)
+world(680,429,144,5,0.52)
+world(489,244,13,9,0.45)
+world(422,340,62,3,0.57)
+world(493,600,29,4,0.44)
+world(310,491,34,2,0.47)
+world(278,628,13,1,0.43)
+Draw.save_png("The_Solar_System.png",1280,800,"#04060e")

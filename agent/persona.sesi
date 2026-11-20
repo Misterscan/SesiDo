@@ -11,6 +11,7 @@ export fn getToolsMD() -> string {return toolsMD}
 export fn getAgentBasicsMD() -> string {return agentBasicsMD}
 export fn getAgentOtherMD() -> string {return agentOtherMD}
 export fn getAgentTools() -> string {return agentTools}
+export fn getSharedDoc() -> string {return Docs.sharedDrawDoc()}
 
 /**
   Agent voice management.
